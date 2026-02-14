@@ -1,0 +1,221 @@
+[gd_scene load_steps=2 format=3 uid="uid://c6hud00000001"]
+
+[ext_resource type="Script" path="res://scripts/ui/hud.gd" id="1"]
+
+[node name="HUD" type="CanvasLayer"]
+layer = 10
+script = ExtResource("1")
+
+[node name="HUDRoot" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="TopLeftPanel" type="VBoxContainer" parent="HUDRoot"]
+layout_mode = 1
+anchors_preset = 0
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 380.0
+offset_bottom = 180.0
+mouse_filter = 2
+
+[node name="HealthBar" type="ProgressBar" parent="HUDRoot/TopLeftPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(340, 36)
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="HealthBarFill" type="StyleBoxFlat" parent="HUDRoot/TopLeftPanel/HealthBar"]
+
+[node name="HealthLabel" type="Label" parent="HUDRoot/TopLeftPanel/HealthBar"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "100 / 100"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ExpBar" type="ProgressBar" parent="HUDRoot/TopLeftPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(340, 24)
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
+[node name="LevelLabel" type="Label" parent="HUDRoot/TopLeftPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "LVL 1"
+
+[node name="TopCenter" type="VBoxContainer" parent="HUDRoot"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -150.0
+offset_top = 20.0
+offset_right = 150.0
+offset_bottom = 110.0
+grow_horizontal = 2
+alignment = 0
+mouse_filter = 2
+
+[node name="WaveLabel" type="Label" parent="HUDRoot/TopCenter"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "WAVE 0/12"
+horizontal_alignment = 1
+
+[node name="EnemiesLabel" type="Label" parent="HUDRoot/TopCenter"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "0 REMAINING"
+horizontal_alignment = 1
+
+[node name="TimerLabel" type="Label" parent="HUDRoot/TopCenter"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "00:00"
+horizontal_alignment = 1
+
+[node name="TopRight" type="VBoxContainer" parent="HUDRoot"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -200.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = 80.0
+grow_horizontal = 0
+mouse_filter = 2
+
+[node name="KillLabel" type="Label" parent="HUDRoot/TopRight"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "0 KILLS"
+horizontal_alignment = 2
+
+[node name="BossContainer" type="VBoxContainer" parent="HUDRoot"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -400.0
+offset_top = 130.0
+offset_right = 400.0
+offset_bottom = 210.0
+grow_horizontal = 2
+mouse_filter = 2
+
+[node name="BossNameLabel" type="Label" parent="HUDRoot/BossContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "BOSS"
+horizontal_alignment = 1
+
+[node name="BossHealthBar" type="ProgressBar" parent="HUDRoot/BossContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(780, 32)
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="WeaponArea" type="VBoxContainer" parent="HUDRoot"]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -280.0
+offset_top = -300.0
+offset_right = -20.0
+offset_bottom = -180.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="WeaponNameLabel" type="Label" parent="HUDRoot/WeaponArea"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "No Weapon"
+horizontal_alignment = 2
+
+[node name="WeaponSlots" type="HBoxContainer" parent="HUDRoot/WeaponArea"]
+unique_name_in_owner = true
+layout_mode = 2
+alignment = 2
+
+[node name="Crosshair" type="Control" parent="HUDRoot"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -20.0
+offset_right = 20.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = null
+
+[node name="Horizontal" type="ColorRect" parent="HUDRoot/Crosshair"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -12.0
+offset_top = -1.5
+offset_right = 12.0
+offset_bottom = 1.5
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(1, 1, 1, 0.8)
+
+[node name="Vertical" type="ColorRect" parent="HUDRoot/Crosshair"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -1.5
+offset_top = -12.0
+offset_right = 1.5
+offset_bottom = 12.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(1, 1, 1, 0.8)
+
+[node name="DamageVignette" type="ColorRect" parent="HUDRoot"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.8, 0.05, 0.05, 0.5)

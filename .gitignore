@@ -1,0 +1,23 @@
+# Godot 4 - Generated files
+.godot/
+*.import
+
+# Android build artifacts
+android/
+*.apk
+*.aab
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Export
+export/
+builds/

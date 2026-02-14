@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <rect width="128" height="128" fill="#1a0a2e" rx="16"/>
+  <text x="64" y="48" font-family="monospace" font-size="28" font-weight="bold" fill="#ff4444" text-anchor="middle">TILL</text>
+  <text x="64" y="76" font-family="monospace" font-size="24" font-weight="bold" fill="#ff6666" text-anchor="middle">THE</text>
+  <text x="64" y="104" font-family="monospace" font-size="28" font-weight="bold" fill="#ff4444" text-anchor="middle">END</text>
+  <circle cx="20" cy="64" r="4" fill="#ff0000" opacity="0.8"/>
+  <circle cx="108" cy="64" r="4" fill="#ff0000" opacity="0.8"/>
+</svg>
