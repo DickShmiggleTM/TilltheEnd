@@ -21,7 +21,7 @@ const COLLECT_DISTANCE := 0.6
 # Properties
 # ---------------------------------------------------------------------------
 
-var pickup_type: String = "exp"    ## "exp", "health", "ammo", "bomb_ammo"
+var pickup_type: String = "exp"    ## "exp", "health", "ammo", "bomb_ammo", "gold"
 var value: float = 10.0
 var attract_speed: float = 0.0
 
@@ -117,6 +117,8 @@ func collect() -> void:
 			EventBus.ammo_collected.emit("bullet", int(value))
 		"bomb_ammo":
 			EventBus.bomb_ammo_collected.emit(int(value))
+		"gold":
+			EventBus.gold_collected.emit(int(value))
 
 	queue_free()
 
@@ -170,6 +172,14 @@ static func create_bomb_ammo_drop(parent: Node, position: Vector3) -> void:
 	pickup.position = position
 	parent.call_deferred("add_child", pickup)
 
+
+static func create_gold_drop(parent: Node, position: Vector3, amount: int) -> void:
+	var pickup := Pickup.new()
+	pickup.pickup_type = "gold"
+	pickup.value = float(amount)
+	pickup.position = position
+	parent.call_deferred("add_child", pickup)
+
 # ---------------------------------------------------------------------------
 # Visual creation
 # ---------------------------------------------------------------------------
@@ -220,6 +230,16 @@ func _create_visual() -> Node3D:
 			mat.emission_energy_multiplier = 2.5
 			mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 
+		"gold":
+			sphere.radius = 0.18
+			sphere.radial_segments = 8
+			sphere.rings = 4
+			mat.albedo_color = Color(1.0, 0.85, 0.0, 0.95)
+			mat.emission_enabled = true
+			mat.emission = Color(1.0, 0.9, 0.2)
+			mat.emission_energy_multiplier = 3.0
+			mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+
 	sphere.material = mat
 	return sphere
 
@@ -233,6 +253,8 @@ func _get_collect_radius() -> float:
 		"ammo":
 			return 0.7
 		"bomb_ammo":
+			return 0.7
+		"gold":
 			return 0.7
 	return 0.5
 

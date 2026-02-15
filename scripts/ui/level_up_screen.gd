@@ -2,6 +2,7 @@ extends CanvasLayer
 ## Level-up reward selection screen.
 ## Pauses the game and presents 3 randomized upgrade choices.
 ## Works while paused (PROCESS_MODE_ALWAYS).
+## Shows rarity tier (Common, Rare, Mythic) with color-coded indicators.
 
 # ── Node references ──────────────────────────────────────────────────────────
 var overlay: ColorRect
@@ -28,6 +29,19 @@ const TYPE_LABELS: Dictionary = {
 	"ability": "NEW ABILITY",
 	"ability_upgrade": "ABILITY UPGRADE",
 	"trait": "TRAIT",
+}
+
+# Rarity enum values match upgrade_generator.gd
+const RARITY_NAMES := { 0: "Common", 1: "Rare", 2: "Mythic" }
+const RARITY_COLORS := {
+	0: Color(0.75, 0.75, 0.75),     # Common - Silver
+	1: Color(0.3, 0.5, 1.0),         # Rare - Blue
+	2: Color(1.0, 0.3, 0.8),         # Mythic - Pink-magenta
+}
+const RARITY_BORDER_COLORS := {
+	0: Color(0.5, 0.5, 0.5),         # Common - Grey border
+	1: Color(0.2, 0.4, 0.9),         # Rare - Blue border
+	2: Color(0.9, 0.2, 0.7),         # Mythic - Magenta border
 }
 
 
@@ -79,14 +93,18 @@ func _show_choices(player_level: int) -> void:
 
 func _create_choice_panel(choice: Dictionary, index: int) -> PanelContainer:
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(0, 180)
+	panel.custom_minimum_size = Vector2(0, 200)
 
-	# Panel styling
+	# Panel styling - use rarity to influence border color
 	var style := StyleBoxFlat.new()
 	var choice_type: String = choice.get("type", "trait")
 	var type_color: Color = TYPE_COLORS.get(choice_type, Color(0.5, 0.5, 0.5))
+	var rarity: int = choice.get("rarity", 0)
+	var rarity_color: Color = RARITY_COLORS.get(rarity, RARITY_COLORS[0])
+	var rarity_border: Color = RARITY_BORDER_COLORS.get(rarity, RARITY_BORDER_COLORS[0])
+
 	style.bg_color = Color(0.08, 0.05, 0.12, 0.92)
-	style.border_color = type_color
+	style.border_color = rarity_border
 	style.border_width_left = 4
 	style.border_width_right = 4
 	style.border_width_top = 4
@@ -103,8 +121,13 @@ func _create_choice_panel(choice: Dictionary, index: int) -> PanelContainer:
 
 	# Content layout
 	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 8)
+	vbox.add_theme_constant_override("separation", 6)
 	panel.add_child(vbox)
+
+	# Top row: Type label + Rarity label
+	var top_row := HBoxContainer.new()
+	top_row.add_theme_constant_override("separation", 12)
+	vbox.add_child(top_row)
 
 	# Type label (WEAPON / ABILITY / TRAIT / UPGRADE)
 	var type_label := Label.new()
@@ -112,13 +135,23 @@ func _create_choice_panel(choice: Dictionary, index: int) -> PanelContainer:
 	type_label.add_theme_font_size_override("font_size", 20)
 	type_label.add_theme_color_override("font_color", type_color * 0.8)
 	type_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	vbox.add_child(type_label)
+	top_row.add_child(type_label)
+
+	# Rarity label
+	var rarity_label := Label.new()
+	var rarity_name: String = RARITY_NAMES.get(rarity, "Common")
+	rarity_label.text = rarity_name.to_upper()
+	rarity_label.add_theme_font_size_override("font_size", 20)
+	rarity_label.add_theme_color_override("font_color", rarity_color)
+	rarity_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	rarity_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top_row.add_child(rarity_label)
 
 	# Name label
 	var name_label := Label.new()
 	name_label.text = choice.get("name", "Unknown")
 	name_label.add_theme_font_size_override("font_size", 36)
-	name_label.add_theme_color_override("font_color", type_color)
+	name_label.add_theme_color_override("font_color", rarity_color)
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	vbox.add_child(name_label)
 
@@ -150,7 +183,7 @@ func _create_choice_panel(choice: Dictionary, index: int) -> PanelContainer:
 	button.pressed.connect(_on_choice_selected.bind(index))
 	# Hover effect
 	var hover_style := StyleBoxFlat.new()
-	hover_style.bg_color = Color(1.0, 0.4, 0.1, 0.15)
+	hover_style.bg_color = Color(rarity_border.r, rarity_border.g, rarity_border.b, 0.15)
 	hover_style.corner_radius_top_left = 12
 	hover_style.corner_radius_top_right = 12
 	hover_style.corner_radius_bottom_left = 12
@@ -160,7 +193,7 @@ func _create_choice_panel(choice: Dictionary, index: int) -> PanelContainer:
 	normal_style.bg_color = Color(0, 0, 0, 0)
 	button.add_theme_stylebox_override("normal", normal_style)
 	var pressed_style := StyleBoxFlat.new()
-	pressed_style.bg_color = Color(1.0, 0.4, 0.1, 0.3)
+	pressed_style.bg_color = Color(rarity_border.r, rarity_border.g, rarity_border.b, 0.3)
 	pressed_style.corner_radius_top_left = 12
 	pressed_style.corner_radius_top_right = 12
 	pressed_style.corner_radius_bottom_left = 12

@@ -54,6 +54,8 @@ const GRAVITY := 9.8
 const HEALTH_DROP_CHANCE := 0.08
 const AMMO_DROP_CHANCE := 0.12
 const BOMB_AMMO_DROP_CHANCE := 0.04
+const BASE_GOLD_DROP_CHANCE := 0.15
+const BASE_GOLD_AMOUNT := 5
 
 # ---------------------------------------------------------------------------
 # Virtual helpers – override in subclasses
@@ -193,6 +195,7 @@ func die() -> void:
 		_drop_ammo()
 	if randf() < BOMB_AMMO_DROP_CHANCE:
 		_drop_bomb_ammo()
+	_try_drop_gold()
 
 	# -- Signals ---------------------------------------------------------
 	EventBus.enemy_killed.emit(self, global_position)
@@ -235,6 +238,17 @@ func _drop_bomb_ammo() -> void:
 	if parent == null:
 		return
 	Pickup.create_bomb_ammo_drop(parent, global_position + Vector3(0, 0.5, 0))
+
+
+func _try_drop_gold() -> void:
+	var luck: float = GameManager.get_trait("luck")
+	var gold_chance := BASE_GOLD_DROP_CHANCE + luck * 0.05
+	if randf() < gold_chance:
+		var gold_amount := int(BASE_GOLD_AMOUNT * (1.0 + luck * 0.25))
+		var parent := get_tree().current_scene
+		if parent == null:
+			return
+		Pickup.create_gold_drop(parent, global_position + Vector3(0, 0.5, 0), gold_amount)
 
 # ---------------------------------------------------------------------------
 # Death FX (override for custom explosions etc.)
