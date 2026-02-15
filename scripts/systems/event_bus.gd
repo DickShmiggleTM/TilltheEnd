@@ -29,6 +29,12 @@ signal ammo_collected(ammo_type: String, amount: int)
 signal health_dropped(position: Vector3, amount: float)
 signal health_collected(amount: float)
 signal bomb_ammo_collected(amount: int)
+signal gold_dropped(position: Vector3, amount: int)
+signal gold_collected(amount: int)
+
+# Player combat ability events
+signal player_dodged_attack
+signal player_revived
 
 # Upgrade events
 signal level_up_choices_ready(choices: Array)

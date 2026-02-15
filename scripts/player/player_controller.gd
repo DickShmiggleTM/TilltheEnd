@@ -329,7 +329,7 @@ func take_damage(amount: float, source: Node3D) -> void:
 	# -- Dodge chance ----------------------------------------------------
 	var dodge_chance: float = GameManager.get_trait("dodge_chance")
 	if dodge_chance > 0.0 and randf() < dodge_chance:
-		# Dodged! Could emit a "MISS" floating text via signal later.
+		EventBus.player_dodged_attack.emit()
 		return
 
 	# -- Defense & armor reduction ---------------------------------------

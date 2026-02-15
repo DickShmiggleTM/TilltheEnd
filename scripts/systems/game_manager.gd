@@ -24,9 +24,10 @@ var player_traits: Dictionary = {}
 var player_level: int = 1
 var player_exp: float = 0.0
 var player_exp_to_next: float = 100.0
+var player_gold: int = 0
 
 const MAX_WEAPONS := 6
-const MAX_ABILITIES := 6
+var MAX_ABILITIES := 6
 const EXP_GROWTH_RATE := 1.35
 const BASE_EXP_NEEDED := 100.0
 const TOTAL_LEVELS := 7
@@ -45,6 +46,7 @@ func _ready() -> void:
 	EventBus.exp_collected.connect(_on_exp_collected)
 	EventBus.upgrade_selected.connect(_on_upgrade_selected)
 	EventBus.boss_killed.connect(_on_boss_killed)
+	EventBus.gold_collected.connect(_on_gold_collected)
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -63,6 +65,8 @@ func start_new_run() -> void:
 	player_level = 1
 	player_exp = 0.0
 	player_exp_to_next = BASE_EXP_NEEDED
+	player_gold = 0
+	MAX_ABILITIES = 6
 	player_weapons.clear()
 	player_abilities.clear()
 	_reset_traits()
@@ -124,6 +128,7 @@ func _reset_traits() -> void:
 		"armor": 0.0,
 		"thorns": 0.0,
 		"lifesteal": 0.0,
+		"luck": 0.0,
 	}
 
 
@@ -254,6 +259,10 @@ func _upgrade_random_ability() -> void:
 	var idx := randi() % player_abilities.size()
 	player_abilities[idx]["level"] = player_abilities[idx].get("level", 1) + 1
 	EventBus.ability_upgraded.emit(player_abilities[idx].get("id", ""), player_abilities[idx]["level"])
+
+
+func _on_gold_collected(amount: int) -> void:
+	player_gold += amount
 
 
 func _on_boss_killed() -> void:
