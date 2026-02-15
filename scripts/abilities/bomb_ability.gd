@@ -1,64 +1,30 @@
-extends AbilityBase
-## Frag Grenade -- throwable explosive with limited charges. Charges are
-## replenished by enemy drops via EventBus.bomb_ammo_collected.
+extends SkillBase
+## Frag Grenade -- throwable explosive activated by skill button.
+## Recharges over time. Damage and radius scale with level.
 
 # ── Tuning ────────────────────────────────────────────────────────────
 var base_damage: float = 40.0
 var explosion_radius: float = 5.0
-var max_charges: int = 3
-var current_charges: int = 3
 var throw_force: float = 14.0
-var fuse_time: float = 2.0  # explode after this many seconds if no collision
-
-# ── Internal ──────────────────────────────────────────────────────────
-var _can_throw: bool = true
-var _throw_cooldown: float = 0.3  # minimum time between throws
-var _cooldown_timer: float = 0.0
+var fuse_time: float = 2.0
 
 
-# ── Ability interface ─────────────────────────────────────────────────
+# ── Skill interface ──────────────────────────────────────────────────
 
-func activate() -> void:
+func on_activate() -> void:
 	_apply_level_stats()
-	current_charges = max_charges
 
 
 func _on_upgrade() -> void:
-	var old_max := max_charges
 	_apply_level_stats()
-	# Grant any new charges from the upgrade
-	current_charges += max_charges - old_max
-	current_charges = mini(current_charges, max_charges)
+
+
+func _execute() -> void:
+	_spawn_grenade()
 
 
 func deactivate() -> void:
 	pass
-
-
-# ── Public ────────────────────────────────────────────────────────────
-
-## Called by input handler / ability manager when the player presses the bomb button.
-func throw_bomb() -> void:
-	if current_charges <= 0 or not _can_throw:
-		return
-	current_charges -= 1
-	_can_throw = false
-	_cooldown_timer = _throw_cooldown
-	_spawn_grenade()
-
-
-## Called by AbilityManager when bomb ammo is collected.
-func add_charges(amount: int) -> void:
-	current_charges = mini(current_charges + amount, max_charges)
-
-
-# ── Process ───────────────────────────────────────────────────────────
-
-func _process(delta: float) -> void:
-	if not _can_throw:
-		_cooldown_timer -= delta
-		if _cooldown_timer <= 0.0:
-			_can_throw = true
 
 
 # ── Private ───────────────────────────────────────────────────────────
@@ -66,7 +32,7 @@ func _process(delta: float) -> void:
 func _apply_level_stats() -> void:
 	base_damage = 40.0 * (1.0 + (level - 1) * 0.25)
 	explosion_radius = 5.0 + level * 0.5
-	max_charges = 3 + level - 1
+	cooldown = maxf(8.0 - level * 0.5, 3.0)
 
 
 func _spawn_grenade() -> void:
@@ -108,7 +74,7 @@ func _spawn_grenade() -> void:
 	grenade.global_position = player.global_position + Vector3.UP * 1.5 + forward * 0.5
 
 	# Parabolic arc: we simulate manually
-	var velocity := forward * throw_force + Vector3.UP * throw_force * 0.45
+	var vel := forward * throw_force + Vector3.UP * throw_force * 0.45
 	var gravity := 9.8
 	var elapsed := 0.0
 	var exploded := false
@@ -120,7 +86,7 @@ func _spawn_grenade() -> void:
 			_explode(grenade)
 	)
 
-	# Simulate trajectory in a coroutine-like tween update
+	# Simulate trajectory
 	var tw := get_tree().create_tween()
 	tw.set_loops()
 	tw.tween_callback(func() -> void:
@@ -129,10 +95,9 @@ func _spawn_grenade() -> void:
 			return
 		var dt := get_process_delta_time()
 		elapsed += dt
-		velocity.y -= gravity * dt
-		grenade.global_position += velocity * dt
+		vel.y -= gravity * dt
+		grenade.global_position += vel * dt
 
-		# Floor collision
 		if grenade.global_position.y <= 0.1:
 			grenade.global_position.y = 0.1
 			exploded = true
@@ -140,12 +105,11 @@ func _spawn_grenade() -> void:
 			tw.kill()
 			return
 
-		# Fuse timer
 		if elapsed >= fuse_time:
 			exploded = true
 			_explode(grenade)
 			tw.kill()
-	).set_delay(0.0)  # run every frame
+	).set_delay(0.0)
 
 
 func _explode(grenade: Node3D) -> void:
@@ -155,15 +119,12 @@ func _explode(grenade: Node3D) -> void:
 	var pos := grenade.global_position
 	var damage := get_scaled_damage(base_damage)
 
-	# Deal area damage
 	for enemy in _get_enemies_in_range(pos, explosion_radius):
 		var dist := enemy.global_position.distance_to(pos)
-		var falloff := 1.0 - (dist / explosion_radius) * 0.5  # 50-100% damage
+		var falloff := 1.0 - (dist / explosion_radius) * 0.5
 		_deal_damage(enemy, damage * falloff)
 
-	# Explosion visual
 	_spawn_explosion_visual(pos)
-
 	grenade.queue_free()
 
 
@@ -185,7 +146,6 @@ func _spawn_explosion_visual(pos: Vector3) -> void:
 	get_tree().current_scene.add_child(explosion)
 	explosion.global_position = pos
 
-	# Expand and fade
 	var tw := get_tree().create_tween()
 	tw.set_parallel(true)
 	tw.tween_property(explosion, "radius", explosion_radius * 0.6, 0.25).set_ease(Tween.EASE_OUT)

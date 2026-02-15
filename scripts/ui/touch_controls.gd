@@ -1,13 +1,16 @@
 extends CanvasLayer
 ## Mobile touch controls overlay.
 ## Provides virtual joystick (left), look/aim area (right), pause button,
-## bomb/ability button, and weapon switch buttons.
+## skill button, kick button, jump button, sprint toggle, and weapon switch buttons.
 ##
 ## Readable properties for other systems:
 ##   movement_vector : Vector2 -- joystick direction (-1..1 per axis)
 ##   look_delta      : Vector2 -- look/aim delta this frame
 ##   is_firing       : bool    -- true while right side is touched
-##   bomb_pressed    : bool    -- true on the frame bomb button is pressed
+##   skill_pressed   : bool    -- true on the frame skill button is pressed
+##   kick_pressed    : bool    -- true on the frame kick button is pressed
+##   jump_pressed    : bool    -- true on the frame jump button is pressed
+##   is_sprinting    : bool    -- true while sprint is toggled on
 
 # ── Exports ──────────────────────────────────────────────────────────────────
 @export var sensitivity: float = 0.004
@@ -18,7 +21,10 @@ extends CanvasLayer
 var movement_vector: Vector2 = Vector2.ZERO
 var look_delta: Vector2 = Vector2.ZERO
 var is_firing: bool = false
-var bomb_pressed: bool = false
+var skill_pressed: bool = false
+var kick_pressed: bool = false
+var jump_pressed: bool = false
+var is_sprinting: bool = false
 
 # ── Node references ──────────────────────────────────────────────────────────
 var joystick_outer: Control
@@ -26,7 +32,10 @@ var joystick_inner: Control
 var joystick_touch_area: Control
 var look_area: Control
 var pause_button: Button
-var bomb_button: Button
+var skill_button: Button
+var kick_button: Button
+var jump_button: Button
+var sprint_button: Button
 var weapon_prev_button: Button
 var weapon_next_button: Button
 
@@ -36,7 +45,9 @@ var _joystick_center: Vector2 = Vector2.ZERO
 var _look_touch_id: int = -1
 var _look_prev_pos: Vector2 = Vector2.ZERO
 var _frame_look_delta: Vector2 = Vector2.ZERO
-var _bomb_was_pressed: bool = false
+var _skill_was_pressed: bool = false
+var _kick_was_pressed: bool = false
+var _jump_was_pressed: bool = false
 
 
 func _ready() -> void:
@@ -48,13 +59,33 @@ func _ready() -> void:
 	joystick_touch_area = %JoystickTouchArea
 	look_area = %LookArea
 	pause_button = %PauseButton
-	bomb_button = %BombButton
 	weapon_prev_button = %WeaponPrevButton
 	weapon_next_button = %WeaponNextButton
 
+	# Skill button: prefer %SkillButton, fall back to %BombButton
+	if has_node("%SkillButton"):
+		skill_button = %SkillButton
+	elif has_node("%BombButton"):
+		skill_button = %BombButton
+
+	# Optional new buttons -- null-safe
+	if has_node("%KickButton"):
+		kick_button = %KickButton
+	if has_node("%JumpButton"):
+		jump_button = %JumpButton
+	if has_node("%SprintButton"):
+		sprint_button = %SprintButton
+
 	# Connect buttons
 	pause_button.pressed.connect(_on_pause_pressed)
-	bomb_button.pressed.connect(_on_bomb_pressed)
+	if skill_button:
+		skill_button.pressed.connect(_on_skill_pressed)
+	if kick_button:
+		kick_button.pressed.connect(_on_kick_pressed)
+	if jump_button:
+		jump_button.pressed.connect(_on_jump_pressed)
+	if sprint_button:
+		sprint_button.pressed.connect(_on_sprint_pressed)
 	weapon_prev_button.pressed.connect(_on_weapon_prev)
 	weapon_next_button.pressed.connect(_on_weapon_next)
 
@@ -68,11 +99,23 @@ func _process(_delta: float) -> void:
 	look_delta = _frame_look_delta
 	_frame_look_delta = Vector2.ZERO
 
-	# Reset single-frame bomb press
-	if bomb_pressed and _bomb_was_pressed:
-		bomb_pressed = false
-	if bomb_pressed:
-		_bomb_was_pressed = true
+	# Reset single-frame skill press
+	if skill_pressed and _skill_was_pressed:
+		skill_pressed = false
+	if skill_pressed:
+		_skill_was_pressed = true
+
+	# Reset single-frame kick press
+	if kick_pressed and _kick_was_pressed:
+		kick_pressed = false
+	if kick_pressed:
+		_kick_was_pressed = true
+
+	# Reset single-frame jump press
+	if jump_pressed and _jump_was_pressed:
+		jump_pressed = false
+	if jump_pressed:
+		_jump_was_pressed = true
 
 
 func _input(event: InputEvent) -> void:
@@ -94,7 +137,7 @@ func _handle_screen_touch(touch: InputEventScreenTouch) -> void:
 		if touch.position.x < half_x and _joystick_touch_id == -1:
 			# Ignore if touching buttons in the left area
 			if touch.position.y > screen_size.y * 0.8:
-				return  # Bomb button area
+				return  # Skill button area
 			_joystick_touch_id = touch.index
 			_joystick_center = touch.position
 			joystick_outer.global_position = _joystick_center - joystick_outer.size * 0.5
@@ -152,9 +195,23 @@ func _on_pause_pressed() -> void:
 		GameManager.pause_game()
 
 
-func _on_bomb_pressed() -> void:
-	bomb_pressed = true
-	_bomb_was_pressed = false
+func _on_skill_pressed() -> void:
+	skill_pressed = true
+	_skill_was_pressed = false
+
+
+func _on_kick_pressed() -> void:
+	kick_pressed = true
+	_kick_was_pressed = false
+
+
+func _on_jump_pressed() -> void:
+	jump_pressed = true
+	_jump_was_pressed = false
+
+
+func _on_sprint_pressed() -> void:
+	is_sprinting = not is_sprinting
 
 
 func _on_weapon_prev() -> void:

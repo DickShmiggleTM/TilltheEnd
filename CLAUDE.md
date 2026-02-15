@@ -26,44 +26,48 @@ TilltheEnd/
 ├── scenes/
 │   ├── game.tscn              # Main gameplay scene (root of in-game hierarchy)
 │   └── ui/
-│       ├── main_menu.tscn     # Entry point / title screen
-│       ├── hud.tscn           # In-game heads-up display
+│       ├── main_menu.tscn     # Entry point / title screen (with Shop access)
+│       ├── hud.tscn           # In-game heads-up display (health, ammo, coins, skills)
 │       ├── pause_menu.tscn
 │       ├── level_intro_screen.tscn
-│       ├── level_up_screen.tscn
+│       ├── level_up_screen.tscn  # 3-4 upgrade choices (skills have 1/20 4th option)
 │       ├── game_over_screen.tscn
-│       └── touch_controls.tscn
+│       └── touch_controls.tscn   # Joystick, skill, kick, jump, sprint buttons
 └── scripts/
     ├── systems/               # Core game systems & autoloads
-    │   ├── game_manager.gd    # Central state machine (autoload)
+    │   ├── game_manager.gd    # Central state machine, run/coin/relic/voucher/ammo (autoload)
     │   ├── event_bus.gd       # Global signal dispatcher (autoload)
-    │   ├── save_manager.gd    # Permadeath save system (autoload)
+    │   ├── save_manager.gd    # Permadeath save + meta persistence (autoload)
     │   ├── audio_manager.gd   # Audio system (autoload, placeholder)
     │   ├── game_scene.gd      # Main scene orchestrator
     │   ├── level_data.gd      # 7-level campaign definitions
     │   ├── wave_manager.gd    # Enemy wave spawning
-    │   ├── upgrade_generator.gd # Loot/upgrade generation
-    │   └── pickup.gd          # Collectible items (EXP, health, ammo)
+    │   ├── upgrade_generator.gd # Loot/upgrade/relic/skill generation
+    │   └── pickup.gd          # Collectible items (EXP, health, ammo, coins)
     ├── player/
-    │   └── player_controller.gd # FPS controller (movement, input, health, touch)
+    │   └── player_controller.gd # FPS controller (movement, jump, sprint, kick, recoil)
     ├── weapons/
-    │   ├── weapon_manager.gd  # Weapon equipping, firing, hitscan/projectile
+    │   ├── weapon_manager.gd  # Weapon equipping, firing, ammo, sway, recoil
     │   └── projectile.gd      # Projectile physics & collision
-    ├── abilities/
-    │   ├── ability_base.gd    # Abstract base class for all abilities
-    │   ├── ability_manager.gd # Ability lifecycle management
-    │   ├── auto_turret.gd
-    │   ├── bomb_ability.gd
-    │   ├── chain_lightning.gd
-    │   ├── fire_nova.gd
-    │   ├── blood_scythe.gd
-    │   ├── frost_aura.gd
-    │   ├── shadow_clone.gd
-    │   ├── venom_trail.gd
-    │   ├── meteor_strike.gd
-    │   └── death_skulls.gd
+    ├── abilities/             # Three-tier system: Abilities, Skills, Traits
+    │   ├── ability_base.gd    # Base class for passive/auto-activating abilities
+    │   ├── ability_manager.gd # Passive ability lifecycle management
+    │   ├── skill_base.gd      # Base class for button-activated skills with cooldowns
+    │   ├── skill_manager.gd   # Manages 3 active skill slots
+    │   ├── auto_turret.gd     # [Ability] Auto-targeting turret
+    │   ├── chain_lightning.gd # [Ability] Lightning chains between enemies
+    │   ├── fire_nova.gd       # [Ability] Periodic fire eruption
+    │   ├── blood_scythe.gd    # [Ability] Spectral scythes with lifesteal
+    │   ├── frost_aura.gd      # [Ability] Slows nearby enemies
+    │   ├── venom_trail.gd     # [Ability] Poison trail behind player
+    │   ├── death_skulls.gd    # [Ability] Orbiting damage skulls
+    │   ├── lifesteal_aura.gd  # [Ability] Passive heal on damage dealt
+    │   ├── thorns_aura.gd     # [Ability] Passive damage reflect
+    │   ├── bomb_ability.gd    # [Skill] Throwable grenade with cooldown
+    │   ├── shadow_clone.gd    # [Skill] Decoy that explodes on death
+    │   └── meteor_strike.gd   # [Skill] Meteor drop on enemy clusters
     ├── enemies/
-    │   ├── enemy_base.gd      # Base enemy class (health, AI, drops)
+    │   ├── enemy_base.gd      # Base enemy class (health, AI, drops, coin drops)
     │   ├── enemy_boss.gd      # Boss base class (multi-phase)
     │   ├── enemy_melee.gd
     │   ├── enemy_ranged.gd
@@ -87,13 +91,14 @@ TilltheEnd/
     │   ├── level_6_temple_f2.gd
     │   └── level_7_temple_f3.gd
     └── ui/
-        ├── main_menu.gd
-        ├── hud.gd
+        ├── main_menu.gd          # Title screen with Shop button
+        ├── hud.gd                # Health, EXP, ammo, coins, skill cooldowns
         ├── pause_menu.gd
         ├── level_intro_screen.gd
-        ├── level_up_screen.gd
+        ├── level_up_screen.gd    # 3-4 choice selection (skills color-coded)
         ├── game_over_screen.gd
-        ├── touch_controls.gd
+        ├── touch_controls.gd     # Joystick, skill, kick, jump, sprint, weapon switch
+        ├── shop_screen.gd        # Relic purchase & voucher redemption
         └── damage_number.gd
 ```
 
@@ -105,9 +110,9 @@ Four autoloads are registered in `project.godot` and are accessible everywhere:
 
 | Autoload | Script | Purpose |
 |----------|--------|---------|
-| `GameManager` | `scripts/systems/game_manager.gd` | Central state machine, run progression, difficulty scaling |
+| `GameManager` | `scripts/systems/game_manager.gd` | Central state machine, run progression, ammo, coins, relics, vouchers, difficulty scaling |
 | `EventBus` | `scripts/systems/event_bus.gd` | Global signal dispatcher for decoupled communication |
-| `SaveManager` | `scripts/systems/save_manager.gd` | Permadeath save/load (binary file at `user://till_the_end_save.dat`) |
+| `SaveManager` | `scripts/systems/save_manager.gd` | Permadeath run save + persistent meta save (coins/relics/vouchers) |
 | `AudioManager` | `scripts/systems/audio_manager.gd` | Audio playback (currently procedural placeholders) |
 
 ### Game State Machine
@@ -116,20 +121,60 @@ Four autoloads are registered in `project.godot` and are accessible everywhere:
 
 ```
 MENU → PLAYING → PAUSED
-                → LEVEL_UP (upgrade selection)
+                → LEVEL_UP (upgrade selection, 3-4 choices)
                 → GAME_OVER / VICTORY
                 → LEVEL_COMPLETE → TRANSITIONING → PLAYING (next level)
 ```
 
+### Three-Tier Player Progression System
+
+| Tier | Description | Player Input | Manager | Persistence |
+|------|-------------|-------------|---------|-------------|
+| **Traits** | Permanent starting stats (max_health, speed, crit_chance, etc.) | None -- always active | `GameManager.player_traits` | Reset on death |
+| **Abilities** | Passive/auto-activating effects (fire nova, frost aura, lifesteal, thorns, etc.) | None -- fire automatically | `AbilityManager` | Reset on death |
+| **Skills** | Button-activated specials with cooldowns (bomb, shadow clone, meteor strike) | Button press required | `SkillManager` (3 slots max) | Reset on death |
+
+**Key distinction:** Traits are raw stat numbers. Abilities are passive scripts that trigger themselves. Skills require player input and have cooldown timers.
+
+### Ammo System
+
+Each weapon has an `ammo_type` field (bullet, shell, rocket, cell, fuel, bolt, acid). Ammo is:
+- Tracked in `GameManager.weapon_ammo` dictionary
+- Consumed on each shot via `GameManager.consume_ammo()`
+- Gained from enemy drops (`Pickup.create_ammo_drop()`)
+- Reset to defaults at run start
+
+### Coin Economy (Persists Across Deaths)
+
+- Enemies drop coins (25% chance, 1-3 coins)
+- Coins persist across deaths (stored in meta save)
+- Used to buy relics in the Shop
+
+### Relic System (Persists Across Deaths)
+
+- **Relics** are purchasable perks from the Shop (accessible from main menu)
+- Up to **5 equipped relic slots** (modifiable by vouchers)
+- Each relic provides permanent stat bonuses applied at run start
+- 8 relics available: Blood Chalice, Iron Boots, Swift Cloak, Marksman's Eye, Soul Magnet, War Drum, Ghost Ring, Phoenix Feather
+
+### Voucher System (Persists Across Deaths)
+
+- **Vouchers** are earned through special tasks and discovering secrets
+- Max **20 vouchers** of any kind
+- Redeemable at the Shop for one-time effects on the next run
+- Discarded after use
+
 ### Event Bus Pattern
 
-All inter-system communication goes through `EventBus` signals. Systems never reference each other directly. Key signal categories:
+All inter-system communication goes through `EventBus` signals. Key signal categories:
 
-- **Player events:** `player_damaged`, `player_healed`, `player_died`, `player_level_up`
+- **Player events:** `player_damaged`, `player_healed`, `player_died`, `player_level_up`, `player_kicked`
 - **Combat events:** `enemy_killed`, `enemy_damaged`, `boss_killed`, `damage_dealt`
 - **Wave events:** `wave_started`, `wave_completed`, `all_waves_completed`, `boss_wave_started`
-- **Pickup events:** `exp_collected`, `health_collected`, `ammo_collected`
-- **Upgrade events:** `level_up_choices_ready`, `upgrade_selected`, `weapon_acquired`, `ability_acquired`
+- **Pickup events:** `exp_collected`, `health_collected`, `ammo_collected`, `coin_collected`
+- **Upgrade events:** `upgrade_selected`, `weapon_acquired`, `ability_acquired`, `skill_acquired`, `trait_upgraded`, `weapon_upgraded`, `ability_upgraded`, `skill_upgraded`
+- **Skill events:** `skill_activated`, `skill_cooldown_started`, `skill_cooldown_finished`
+- **Shop events:** `relic_equipped`, `relic_unequipped`, `voucher_redeemed`, `coins_changed`, `shop_opened`, `shop_closed`
 - **Game state events:** `game_started`, `game_over`, `game_won`, `level_started`, `level_complete`
 
 ### Scene Hierarchy (In-Game)
@@ -143,7 +188,8 @@ Game (Node3D)                      [game_scene.gd]
 │   ├── RayCast3D (aim, 100m)
 │   ├── Marker3D (fire point)
 │   ├── WeaponManager              [weapon_manager.gd]
-│   └── AbilityManager             [ability_manager.gd]
+│   ├── AbilityManager             [ability_manager.gd]
+│   └── SkillManager               [skill_manager.gd]
 ├── EntityContainer                [spawned enemies/pickups go here]
 ├── WaveManager                    [wave_manager.gd]
 ├── UpgradeGenerator               [upgrade_generator.gd]
@@ -171,12 +217,27 @@ Game (Node3D)                      [game_scene.gd]
 
 ### Core Loop
 
-1. 7-level campaign with permadeath (death deletes save, restart from level 1)
+1. 7-level campaign with permadeath (death deletes run save, restart from level 1)
 2. Each level has 8-16 enemy waves followed by a boss wave
-3. Killing enemies drops EXP, health, ammo
-4. Level-ups offer 1-of-3 random upgrades (weapons, abilities, traits)
+3. Killing enemies drops EXP, health, ammo, and coins
+4. Level-ups offer 1-of-3 random upgrades (weapons, abilities, skills, traits) with 1/20 chance of a 4th skill upgrade option
 5. Save checkpoint after each boss defeat
 6. Beat all 7 levels to win
+7. Coins/relics/vouchers persist across deaths for meta-progression
+
+### Player Mechanics
+
+- **Movement:** WASD + virtual joystick, acceleration-based with friction
+- **Look/Aim:** Mouse or touch drag on right half of screen
+- **Firing:** Auto-fire when touching right side (mobile) or LMB (desktop)
+- **Jumping:** Space bar or touch jump button
+- **Sprinting:** Shift toggle or touch sprint button (1.6x speed)
+- **Kick:** F key or touch kick button (knockback + small damage to nearby enemies)
+- **Weapon Switch:** Arrow buttons or mouse wheel
+- **Skill Use:** Q key or touch skill button (activates current skill slot)
+- **Camera bob/sway:** Position-based bob + rotational sway while moving
+- **Weapon sway:** Weapon model follows look input with smooth return
+- **Recoil:** Camera kick on fire, recovers smoothly
 
 ### Difficulty Scaling
 
@@ -186,21 +247,29 @@ Game (Node3D)                      [game_scene.gd]
 ### Content Inventory
 
 - **10 weapons** (pistol, shotgun, SMG, rocket launcher, plasma rifle, railgun, minigun, flamethrower, crossbow, acid gun)
-- **10 abilities** (auto turret, bomb, chain lightning, fire nova, blood scythe, frost aura, shadow clone, venom trail, meteor strike, death skulls)
-- **13 traits** (max_health, defense, speed, fire_rate_mult, exp_mult, collect_range, damage_mult, crit_chance, crit_damage, dodge_chance, health_regen, armor, thorns, lifesteal)
+- **9 passive abilities** (auto turret, chain lightning, fire nova, blood scythe, frost aura, venom trail, death skulls, lifesteal aura, thorns aura)
+- **3 active skills** (frag grenade, shadow clone, meteor strike)
+- **12 traits** (max_health, defense, speed, fire_rate_mult, exp_mult, collect_range, damage_mult, crit_chance, crit_damage, dodge_chance, health_regen, armor)
+- **8 relics** (blood chalice, iron boots, swift cloak, marksman's eye, soul magnet, war drum, ghost ring, phoenix feather)
 - **5 enemy types** (melee, ranged, fast, tank, exploder)
 - **7 unique bosses** (one per level)
 - **7 procedural maps** (forest, industrial, tunnels, courtyard, temple floors 1-3)
+
+### Save System
+
+Two separate save files:
+- **Run save** (`user://till_the_end_save.dat`): Current run state (level, weapons, abilities, skills, traits, ammo). **Deleted on death.**
+- **Meta save** (`user://till_the_end_meta.dat`): Coins, owned relics, equipped relics, vouchers. **Persists across deaths.**
 
 ## Coding Conventions
 
 ### Naming
 
-- **Classes/Nodes:** `PascalCase` (e.g., `EnemyBase`, `AbilityManager`)
+- **Classes/Nodes:** `PascalCase` (e.g., `EnemyBase`, `AbilityManager`, `SkillBase`)
 - **Variables/Properties:** `snake_case` (e.g., `current_health`, `wave_hp_mult`)
-- **Constants:** `UPPER_SNAKE_CASE` (e.g., `MAX_WEAPONS`, `ACCELERATION`)
+- **Constants:** `UPPER_SNAKE_CASE` (e.g., `MAX_WEAPONS`, `KICK_COOLDOWN`)
 - **Private methods:** prefix `_` (e.g., `_on_player_died()`, `_spawn_wave()`)
-- **Signals:** `snake_case` (e.g., `player_damaged`, `wave_completed`)
+- **Signals:** `snake_case` (e.g., `player_damaged`, `skill_cooldown_finished`)
 - **Enums:** `PascalCase` values (e.g., `GameState.PLAYING`)
 
 ### Code Structure
@@ -255,18 +324,22 @@ func _on_event_name() -> void:
 |---------|------------|
 | **Autoload Singletons** | GameManager, EventBus, SaveManager, AudioManager |
 | **Observer (Event Bus)** | All inter-system communication via EventBus signals |
-| **Factory** | `Pickup.create_exp_drop()`, `WeaponManager._create_projectile_node()`, `UpgradeGenerator` |
+| **Factory** | `Pickup.create_exp_drop()`, `Pickup.create_coin_drop()`, `WeaponManager._create_projectile_node()` |
 | **State Machine** | `GameManager.state` enum controls game phases |
-| **Strategy** | Enemy subclasses, ability subclasses, per-level map generators |
+| **Strategy** | Enemy subclasses, ability subclasses, skill subclasses, per-level map generators |
+| **Three-tier system** | Traits (stats) → Abilities (passive) → Skills (active with cooldowns) |
 | **Runtime Instantiation** | All visuals (CSG meshes), projectiles, and pickups built in code, no prefab scenes |
+| **Dual persistence** | Run save (deleted on death) + Meta save (coins/relics/vouchers persist) |
 
 ### Key Architectural Principles
 
 - **All visuals are procedural.** CSG meshes and `AudioStreamGenerator` are used instead of asset files. No `.png`, `.wav`, `.glb`, or `.tres` files exist.
 - **Loose coupling via EventBus.** Systems never hold direct references to each other. All communication goes through signals on the EventBus autoload.
-- **Data-driven upgrades.** Weapons, abilities, and traits are defined as dictionaries in `UpgradeGenerator`. Level definitions live in `LevelData`.
-- **Trait-based progression.** Player stats are modified through a trait dictionary on `GameManager`. Gameplay systems read traits at runtime (e.g., `GameManager.get_trait("damage_mult")`).
-- **Mobile-first input.** Touch controls (virtual joystick, look drag, tap buttons) are primary. Keyboard/mouse input is also supported for desktop testing.
+- **Data-driven upgrades.** Weapons, abilities, skills, traits, and relics are defined as dictionaries in `UpgradeGenerator`. Level definitions live in `LevelData`.
+- **Three-tier player progression.** Traits = raw stats (always active). Abilities = passive auto-effects (no input). Skills = button-activated with cooldowns (3 slots).
+- **Dual persistence.** Run progress resets on death. Meta-progression (coins, relics, vouchers) persists forever.
+- **Mobile-first input.** Touch controls (virtual joystick, look drag, tap buttons for kick/jump/sprint/skill) are primary. Keyboard/mouse input is also supported for desktop testing.
+- **Ammo economy.** Each weapon type consumes ammo from a shared pool. Ammo drops from enemies. Runs start with default ammo amounts.
 
 ## Development Workflow
 
@@ -274,7 +347,7 @@ func _on_event_name() -> void:
 
 Open the project in Godot 4.2 and run from the editor. The entry scene is `scenes/ui/main_menu.tscn`.
 
-- **Desktop testing:** WASD + mouse look + left-click to shoot + mouse wheel to switch weapons
+- **Desktop testing:** WASD + mouse look + left-click to shoot + mouse wheel to switch weapons + Space to jump + Shift to sprint + F to kick + Q to use skill
 - **Mobile testing:** Build APK via Export > Android preset, deploy to device
 
 ### Input Map
@@ -288,6 +361,10 @@ Defined in `project.godot`:
 | `move_left` | A | Strafe left |
 | `move_right` | D | Strafe right |
 | `shoot` | Left Mouse Button | Fire weapon |
+| `jump` | Space | Jump |
+| `kick` | F | Kick (knockback) |
+| `sprint` | Left Shift | Toggle sprint |
+| `use_skill` | Q | Activate current skill |
 
 Touch controls are handled programmatically in `touch_controls.gd` and `player_controller.gd`.
 
@@ -311,14 +388,28 @@ No automated test framework is currently configured. Testing is manual via the G
 ### Adding a New Weapon
 
 1. Add weapon data dictionary to `WEAPON_DATABASE` in `scripts/systems/upgrade_generator.gd`
-2. The weapon system handles firing, projectiles, and visuals generically based on weapon data properties (`damage`, `fire_rate`, `spread`, `projectile_speed`, `pellets`, `pierce`, etc.)
+2. Include `ammo_type` field matching a key in `GameManager.DEFAULT_AMMO`
+3. The weapon system handles firing, projectiles, ammo consumption, and visuals generically based on weapon data properties
 
-### Adding a New Ability
+### Adding a New Ability (Passive/Auto)
 
 1. Create a new script extending `AbilityBase` in `scripts/abilities/`
-2. Implement `_ready()`, `activate()`, `deactivate()`, and `upgrade()` methods
-3. Register the ability in `ABILITY_DATABASE` in `scripts/systems/upgrade_generator.gd`
-4. Add the script path to the ability data entry
+2. Implement `activate()`, `deactivate()`, and `_on_upgrade()` methods
+3. Register the script path in `AbilityManager.ABILITY_SCRIPTS`
+4. Add the ability data to `ABILITY_DATABASE` in `upgrade_generator.gd`
+
+### Adding a New Skill (Button-Activated)
+
+1. Create a new script extending `SkillBase` in `scripts/abilities/`
+2. Implement `on_activate()`, `_execute()`, `deactivate()`, and `_on_upgrade()` methods
+3. Register the script path in `SkillManager.SKILL_SCRIPTS`
+4. Add the skill data to `SKILL_DATABASE` in `upgrade_generator.gd`
+
+### Adding a New Relic
+
+1. Add relic data to `RELIC_DATABASE` in `upgrade_generator.gd`
+2. Include `cost`, `bonuses` (trait name -> value mapping), and `color`
+3. The shop UI and relic system handle everything else automatically
 
 ### Adding a New Enemy Type
 
@@ -329,22 +420,19 @@ No automated test framework is currently configured. Testing is manual via the G
 ### Adding a New Level
 
 1. Create a new map generator script extending `MapGenerator` in `scripts/map/`
-2. Add a complete level data entry in `scripts/systems/level_data.gd` with: map script path, boss script path, wave count, difficulty multipliers, environment colors, lighting, enemy composition, and story text
+2. Add a complete level data entry in `scripts/systems/level_data.gd`
 3. Create a corresponding boss script extending `EnemyBoss` in `scripts/enemies/`
-4. Update `GameManager` if the total level count changes
-
-### Adding a New Trait
-
-1. Add the trait with a default value to `GameManager.traits` dictionary
-2. Reference it from gameplay code via `GameManager.get_trait("trait_name")`
-3. Add upgrade entries in `UpgradeGenerator.TRAIT_UPGRADES`
+4. Update `GameManager.TOTAL_LEVELS` if the total level count changes
 
 ## Important Notes for AI Assistants
 
 - **No asset files exist.** All meshes are CSG, all audio is procedural. Do not assume or reference `.png`, `.wav`, `.obj`, `.glb`, or `.tres` resource files.
 - **Godot 4.2 GDScript only.** Do not use Godot 3.x syntax (e.g., `onready` instead of `@onready`, `export` instead of `@export`).
 - **EventBus is mandatory for cross-system communication.** Never add direct node references between systems. Emit and connect signals on `EventBus`.
-- **GameManager owns all game state.** Player progression (level, traits, weapons, abilities), game phase, and difficulty data live on `GameManager`. Do not duplicate state elsewhere.
+- **GameManager owns all game state.** Player progression (level, traits, weapons, abilities, skills), ammo, coins, relics, vouchers, and game phase all live on `GameManager`. Do not duplicate state elsewhere.
+- **Three-tier system: Traits → Abilities → Skills.** Traits are stat numbers (no code). Abilities are passive (auto-fire, no input). Skills require button press and have cooldowns. Do not mix these tiers.
+- **Dual persistence model.** Run state resets on death. Meta state (coins, relics, vouchers) persists forever. Understand which data belongs to which save file.
 - **Runtime instantiation pattern.** New nodes (enemies, projectiles, pickups, visual effects) are created in code and added to `EntityContainer`. Do not create separate `.tscn` files for simple game objects.
 - **Mobile-first UI.** All UI must work in portrait 1080x1920. Touch targets should be large enough for finger input. Test both touch and keyboard/mouse paths.
-- **Permadeath is a core mechanic.** The save file is deleted on death. Do not add autosave during levels or undo-death features without explicit approval.
+- **Permadeath is a core mechanic.** The run save file is deleted on death. Do not add autosave during levels or undo-death features without explicit approval.
+- **Ammo matters.** Weapons consume ammo from `GameManager.weapon_ammo`. Players get ammo from enemy drops. Don't bypass the ammo system.

@@ -1,29 +1,30 @@
-extends AbilityBase
-## Shadow Clone -- spawns a decoy at the player's position that attracts
-## enemies. The decoy has health and explodes when destroyed or after its
-## duration expires.
+extends SkillBase
+## Shadow Clone -- player-activated skill that spawns a decoy at the player's
+## position that attracts enemies. The decoy has health and explodes when
+## destroyed or after its duration expires. Recharges over time.
 
 # ── Tuning ────────────────────────────────────────────────────────────
 var base_damage: float = 25.0
 var clone_health: float = 30.0
 var duration: float = 5.0
-var cooldown: float = 8.0
 var explosion_radius: float = 5.0
 
 # ── Internal ──────────────────────────────────────────────────────────
-var _cooldown_timer: float = 0.0
 var _active_clone: Node3D = null
 
 
-# ── Ability interface ─────────────────────────────────────────────────
+# ── Skill interface ──────────────────────────────────────────────────
 
-func activate() -> void:
+func on_activate() -> void:
 	_apply_level_stats()
-	_cooldown_timer = 1.0  # brief delay before first clone
 
 
 func _on_upgrade() -> void:
 	_apply_level_stats()
+
+
+func _execute() -> void:
+	_spawn_clone()
 
 
 func deactivate() -> void:
@@ -32,38 +33,25 @@ func deactivate() -> void:
 		_active_clone = null
 
 
-# ── Process ───────────────────────────────────────────────────────────
-
-func _process(delta: float) -> void:
-	if player == null:
-		return
-
-	# Only spawn a new clone when the previous one is gone
-	if _active_clone != null and is_instance_valid(_active_clone):
-		return
-
-	_active_clone = null
-	_cooldown_timer -= delta
-	if _cooldown_timer <= 0.0:
-		_cooldown_timer = cooldown
-		_spawn_clone()
-
-
 # ── Private ───────────────────────────────────────────────────────────
 
 func _apply_level_stats() -> void:
 	base_damage = 25.0 * (1.0 + (level - 1) * 0.3)
 	clone_health = 30.0 + level * 10.0
 	duration = 5.0 + level
-	cooldown = maxf(8.0 - level * 0.5, 3.0)
+	cooldown = maxf(12.0 - level * 0.5, 5.0)
 	explosion_radius = 5.0 + level * 0.3
 
 
 func _spawn_clone() -> void:
+	# Clean up existing clone first
+	if _active_clone and is_instance_valid(_active_clone):
+		_active_clone.queue_free()
+		_active_clone = null
+
 	var clone := Node3D.new()
 	clone.name = "ShadowClone"
 
-	# Visual: dark semi-transparent cylinder (humanoid silhouette)
 	var body := CSGCylinder3D.new()
 	body.radius = 0.4
 	body.height = 1.8
@@ -78,9 +66,8 @@ func _spawn_clone() -> void:
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	body.material = mat
 	clone.add_child(body)
-	body.position = Vector3.UP * 0.9  # offset so base is at floor
+	body.position = Vector3.UP * 0.9
 
-	# "Head" sphere
 	var head := CSGSphere3D.new()
 	head.radius = 0.25
 	head.radial_segments = 6
@@ -90,11 +77,10 @@ func _spawn_clone() -> void:
 	head.position = Vector3.UP * 2.05
 	clone.add_child(head)
 
-	# Enemy attraction area (large detection radius)
 	var attract_area := Area3D.new()
 	attract_area.name = "AttractArea"
-	attract_area.collision_layer = 2  # Layer 2 (Player) -- enemies see it as a target
-	attract_area.collision_mask  = 4  # Mask  3 (Enemies)
+	attract_area.collision_layer = 2
+	attract_area.collision_mask  = 4
 	attract_area.monitorable = true
 	attract_area.monitoring = true
 
@@ -105,11 +91,10 @@ func _spawn_clone() -> void:
 	attract_area.add_child(attract_col)
 	clone.add_child(attract_area)
 
-	# Damage reception area (for enemies to hit the clone)
 	var hit_area := Area3D.new()
 	hit_area.name = "HitArea"
-	hit_area.collision_layer = 2   # appear as player-like target
-	hit_area.collision_mask  = 4   # detect enemies
+	hit_area.collision_layer = 2
+	hit_area.collision_mask  = 4
 	hit_area.monitorable = true
 	hit_area.monitoring = true
 
@@ -121,27 +106,22 @@ func _spawn_clone() -> void:
 	hit_area.add_child(hit_col)
 	clone.add_child(hit_area)
 
-	# Add clone to the group so enemies can target it
 	clone.add_to_group("player_decoys")
 
 	get_tree().current_scene.add_child(clone)
 	clone.global_position = player.global_position
 	_active_clone = clone
 
-	# Track clone health and duration
 	var hp := clone_health
 	var time_left := duration
 	var exploded := false
 	var dmg := get_scaled_damage(base_damage)
 	var radius := explosion_radius
 
-	# Damage from enemy overlaps
 	hit_area.body_entered.connect(func(body_node: Node3D) -> void:
 		if body_node.is_in_group("enemies") and is_instance_valid(body_node):
-			# Enemy "attacks" the clone
-			var attack_dmg := 5.0  # approximate contact damage
+			var attack_dmg := 5.0
 			hp -= attack_dmg
-			# Flash effect
 			mat.emission_energy_multiplier = 6.0
 			var flash_tw := get_tree().create_tween()
 			flash_tw.tween_property(mat, "emission_energy_multiplier", 2.0, 0.15)
@@ -150,12 +130,10 @@ func _spawn_clone() -> void:
 				_explode_clone(clone, dmg, radius)
 	)
 
-	# Duration timer via tween
 	var dur_tw := get_tree().create_tween()
 	dur_tw.tween_callback(func() -> void:
 		if not exploded and is_instance_valid(clone):
 			time_left -= get_process_delta_time()
-			# Pulse visual as time runs out
 			if time_left < 2.0:
 				mat.albedo_color.a = 0.3 + 0.35 * abs(sin(time_left * 4.0))
 			if time_left <= 0.0:
@@ -172,13 +150,10 @@ func _explode_clone(clone: Node3D, damage: float, radius: float) -> void:
 
 	var pos := clone.global_position
 
-	# Area damage
 	for enemy in _get_enemies_in_range(pos, radius):
 		_deal_damage(enemy, damage)
 
-	# Explosion visual
 	_spawn_explosion(pos, radius)
-
 	clone.queue_free()
 	_active_clone = null
 

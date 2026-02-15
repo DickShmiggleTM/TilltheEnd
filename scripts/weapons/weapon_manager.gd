@@ -10,6 +10,13 @@ const WEAPON_BOB_SPEED := 12.0
 const WEAPON_BOB_AMOUNT := 0.015
 const SWIPE_THRESHOLD := 60.0  # Minimum pixels for a swipe to register
 
+# Weapon sway constants
+const WEAPON_SWAY_AMOUNT := 0.003
+const WEAPON_SWAY_RETURN_SPEED := 6.0
+
+# Recoil constant (tunable per weapon via weapon data override)
+const RECOIL_AMOUNT := 0.02
+
 # Hitscan weapon ids -- these use raycasts instead of projectiles
 const HITSCAN_WEAPONS: Array[String] = ["railgun"]
 
@@ -32,6 +39,12 @@ const SPINDOWN_RATE := 2.0  # Seconds to spin down
 var _touch_start_pos: Vector2 = Vector2.ZERO
 var _touch_start_time: float = 0.0
 var _tracking_touch_index: int = -1
+
+# Weapon sway state
+var _sway_offset: Vector2 = Vector2.ZERO
+
+# Recoil kick-back state
+var _recoil_kick: float = 0.0
 
 # ── Node references (created at runtime) ───────────────────────────────────────
 var weapon_pivot: Node3D  # Holds the visual weapon mesh, positioned bottom-right
@@ -65,6 +78,12 @@ func _process(delta: float) -> void:
 	# Weapon bob
 	_update_weapon_bob(delta)
 
+	# Weapon sway
+	_update_weapon_sway(delta)
+
+	# Recoil kick-back recovery
+	_update_recoil_kick(delta)
+
 	# Muzzle flash timer
 	if muzzle_flash_light and muzzle_flash_light.visible:
 		muzzle_flash_light.light_energy -= delta / MUZZLE_FLASH_DURATION * 2.0
@@ -97,6 +116,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 				switch_weapon(1)
 				get_viewport().set_input_as_handled()
+
+	# ── Accumulate look delta for weapon sway ──
+	if event is InputEventMouseMotion:
+		var motion := event as InputEventMouseMotion
+		_sway_offset.x = clampf(_sway_offset.x - motion.relative.x * WEAPON_SWAY_AMOUNT, -0.05, 0.05)
+		_sway_offset.y = clampf(_sway_offset.y - motion.relative.y * WEAPON_SWAY_AMOUNT, -0.05, 0.05)
 
 	# ── Desktop: shoot action ──
 	if event.is_action_pressed("shoot"):
@@ -157,6 +182,12 @@ func fire() -> void:
 	if weapon.is_empty():
 		return
 
+	# Ammo consumption: check if weapon uses an ammo type
+	var ammo_type: String = weapon.get("ammo_type", "")
+	if ammo_type != "":
+		if not GameManager.consume_ammo(ammo_type, 1):
+			return  # No ammo available -- don't fire
+
 	# Calculate actual fire rate with trait modifier
 	var base_fire_rate: float = weapon.get("fire_rate", 0.3)
 	var fire_rate_mult: float = GameManager.player_traits.get("fire_rate_mult", 1.0)
@@ -171,7 +202,7 @@ func fire() -> void:
 	# Determine pellet count (shotgun fires multiple)
 	var pellet_count: int = weapon.get("pellets", 1)
 
-	# Fire each pellet
+	# Fire each pellet (ammo was already consumed once above for the whole trigger pull)
 	for i in pellet_count:
 		_fire_single_pellet(weapon)
 
@@ -180,6 +211,14 @@ func fire() -> void:
 
 	# Play sound effect
 	AudioManager.play_sfx("shoot_" + weapon.get("id", "generic"), -5.0, 1.0)
+
+	# Recoil / camera shake
+	var recoil_amount: float = weapon.get("recoil_amount", RECOIL_AMOUNT)
+	if _player and _player.has_method("apply_recoil"):
+		_player.apply_recoil(recoil_amount)
+
+	# Visual weapon kick-back
+	_recoil_kick = recoil_amount * 5.0
 
 
 func switch_weapon(direction: int) -> void:
@@ -337,12 +376,6 @@ func _apply_damage_to_enemy(enemy: Node3D, damage: float, is_crit: bool, hit_pos
 	if enemy.has_method("take_damage"):
 		enemy.take_damage(damage)
 
-	# Lifesteal
-	var lifesteal: float = GameManager.player_traits.get("lifesteal", 0.0)
-	if lifesteal > 0.0:
-		var heal_amount := damage * lifesteal
-		EventBus.player_healed.emit(heal_amount)
-
 	# Emit combat events
 	EventBus.enemy_damaged.emit(enemy, damage)
 	EventBus.damage_dealt.emit(damage, hit_pos, is_crit)
@@ -376,6 +409,40 @@ func _update_spinup(delta: float) -> void:
 			spinup_factor = maxf(spinup_factor - delta / SPINDOWN_RATE, 0.0)
 	else:
 		spinup_factor = 0.0
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Weapon sway
+# ══════════════════════════════════════════════════════════════════════════════
+
+func _update_weapon_sway(delta: float) -> void:
+	if weapon_pivot == null:
+		return
+
+	# Smoothly return sway offset to zero when not looking
+	_sway_offset = _sway_offset.lerp(Vector2.ZERO, delta * WEAPON_SWAY_RETURN_SPEED)
+
+	# Apply sway as rotation on the weapon pivot
+	weapon_pivot.rotation.y = _sway_offset.x
+	weapon_pivot.rotation.x = _sway_offset.y
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Recoil kick-back visual
+# ══════════════════════════════════════════════════════════════════════════════
+
+func _update_recoil_kick(delta: float) -> void:
+	if weapon_pivot == null:
+		return
+
+	# Smoothly recover kick-back to zero
+	_recoil_kick = lerpf(_recoil_kick, 0.0, delta * 10.0)
+
+	# Apply kick-back as a small upward + backward offset on weapon pivot position
+	# Note: position.x and position.y base values are set by _update_weapon_bob;
+	# we layer the kick on top additively here for the z-axis and y-axis.
+	weapon_pivot.position.z = -0.45 + _recoil_kick
+	weapon_pivot.position.y += _recoil_kick * 0.5
 
 
 # ══════════════════════════════════════════════════════════════════════════════

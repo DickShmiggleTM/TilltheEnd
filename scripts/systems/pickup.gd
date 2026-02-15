@@ -1,6 +1,6 @@
 class_name Pickup
 extends Area3D
-## Collectible pickup for EXP orbs, health, ammo, and bomb ammo.
+## Collectible pickup for EXP orbs, health, ammo, and coins.
 ##
 ## EXP orbs are magnetically pulled toward the player when within the
 ## player's collect_range. All pickups bob up and down, have colored glow,
@@ -21,7 +21,7 @@ const COLLECT_DISTANCE := 0.6
 # Properties
 # ---------------------------------------------------------------------------
 
-var pickup_type: String = "exp"    ## "exp", "health", "ammo", "bomb_ammo"
+var pickup_type: String = "exp"    ## "exp", "health", "ammo", "coin"
 var value: float = 10.0
 var attract_speed: float = 0.0
 
@@ -115,8 +115,8 @@ func collect() -> void:
 			EventBus.health_collected.emit(value)
 		"ammo":
 			EventBus.ammo_collected.emit("bullet", int(value))
-		"bomb_ammo":
-			EventBus.bomb_ammo_collected.emit(int(value))
+		"coin":
+			EventBus.coin_collected.emit(int(value))
 
 	queue_free()
 
@@ -163,10 +163,10 @@ static func create_ammo_drop(parent: Node, position: Vector3) -> void:
 	parent.call_deferred("add_child", pickup)
 
 
-static func create_bomb_ammo_drop(parent: Node, position: Vector3) -> void:
+static func create_coin_drop(parent: Node, position: Vector3, amount: int = 1) -> void:
 	var pickup := Pickup.new()
-	pickup.pickup_type = "bomb_ammo"
-	pickup.value = 1.0
+	pickup.pickup_type = "coin"
+	pickup.value = float(amount)
 	pickup.position = position
 	parent.call_deferred("add_child", pickup)
 
@@ -210,14 +210,14 @@ func _create_visual() -> Node3D:
 			mat.emission_energy_multiplier = 2.0
 			mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 
-		"bomb_ammo":
-			sphere.radius = 0.22
+		"coin":
+			sphere.radius = 0.16
 			sphere.radial_segments = 8
 			sphere.rings = 4
-			mat.albedo_color = Color(1.0, 0.5, 0.0, 0.9)
+			mat.albedo_color = Color(1.0, 0.85, 0.0, 0.95)
 			mat.emission_enabled = true
-			mat.emission = Color(1.0, 0.6, 0.1)
-			mat.emission_energy_multiplier = 2.5
+			mat.emission = Color(1.0, 0.8, 0.1)
+			mat.emission_energy_multiplier = 3.0
 			mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 
 	sphere.material = mat
@@ -232,8 +232,8 @@ func _get_collect_radius() -> float:
 			return 0.7
 		"ammo":
 			return 0.7
-		"bomb_ammo":
-			return 0.7
+		"coin":
+			return 0.8
 	return 0.5
 
 # ---------------------------------------------------------------------------

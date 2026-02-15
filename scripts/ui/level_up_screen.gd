@@ -1,6 +1,6 @@
 extends CanvasLayer
 ## Level-up reward selection screen.
-## Pauses the game and presents 3 randomized upgrade choices.
+## Pauses the game and presents 3–4 randomized upgrade choices.
 ## Works while paused (PROCESS_MODE_ALWAYS).
 
 # ── Node references ──────────────────────────────────────────────────────────
@@ -20,6 +20,8 @@ const TYPE_COLORS: Dictionary = {
 	"ability": Color(0.2, 0.7, 1.0),         # Blue-cyan
 	"ability_upgrade": Color(0.3, 0.8, 1.0),  # Lighter cyan
 	"trait": Color(0.4, 1.0, 0.3),           # Green
+	"skill": Color(1.0, 0.6, 0.0),           # Amber
+	"skill_upgrade": Color(1.0, 0.7, 0.2),   # Light amber
 }
 
 const TYPE_LABELS: Dictionary = {
@@ -28,6 +30,8 @@ const TYPE_LABELS: Dictionary = {
 	"ability": "NEW ABILITY",
 	"ability_upgrade": "ABILITY UPGRADE",
 	"trait": "TRAIT",
+	"skill": "NEW SKILL",
+	"skill_upgrade": "SKILL UPGRADE",
 }
 
 
@@ -56,7 +60,7 @@ func _on_player_level_up(new_level: int) -> void:
 
 
 func _show_choices(player_level: int) -> void:
-	# Generate 3 choices
+	# Generate choices (typically 3, sometimes 4 when a bonus skill upgrade appears)
 	_choices = _upgrade_generator.generate_level_up_choices(player_level)
 
 	# Pause the game
@@ -106,7 +110,7 @@ func _create_choice_panel(choice: Dictionary, index: int) -> PanelContainer:
 	vbox.add_theme_constant_override("separation", 8)
 	panel.add_child(vbox)
 
-	# Type label (WEAPON / ABILITY / TRAIT / UPGRADE)
+	# Type label (WEAPON / ABILITY / TRAIT / SKILL / UPGRADE)
 	var type_label := Label.new()
 	type_label.text = TYPE_LABELS.get(choice_type, "UPGRADE")
 	type_label.add_theme_font_size_override("font_size", 20)

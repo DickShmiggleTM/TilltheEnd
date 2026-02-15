@@ -1,6 +1,7 @@
 extends Node
 ## Generates randomized upgrade choices for level-up rewards.
-## Handles weapons, abilities, and traits with weighted selection.
+## Handles weapons, abilities, skills, and traits with weighted selection.
+## Skills have a 1-in-20 chance of appearing as a 4th upgrade option.
 
 const WEAPON_DATABASE := {
 	"pistol": {
@@ -85,6 +86,7 @@ const WEAPON_DATABASE := {
 	},
 }
 
+# Only passive/auto-activating abilities (no player input required)
 const ABILITY_DATABASE := {
 	"auto_turret": {
 		"id": "auto_turret", "name": "Sentinel Turret", "type": "ability",
@@ -92,13 +94,6 @@ const ABILITY_DATABASE := {
 		"damage": 5.0, "fire_rate": 0.3, "range": 12.0, "duration": -1.0,
 		"color": Color(0.2, 0.7, 1.0), "level": 1,
 		"upgrade_desc": "Damage +30%, Fire rate +15%"
-	},
-	"bomb": {
-		"id": "bomb", "name": "Frag Grenade", "type": "ability",
-		"description": "Throwable explosive. Replenished by enemy drops. Devastating blast.",
-		"damage": 40.0, "radius": 5.0, "max_charges": 3, "charges": 3,
-		"color": Color(1.0, 0.6, 0.0), "level": 1,
-		"upgrade_desc": "Max charges +1, Damage +25%, Radius +15%"
 	},
 	"death_skulls": {
 		"id": "death_skulls", "name": "Death Orbit", "type": "ability",
@@ -135,13 +130,6 @@ const ABILITY_DATABASE := {
 		"color": Color(0.5, 0.8, 1.0), "level": 1,
 		"upgrade_desc": "Slow +10%, Radius +1m, Damage amp +5%"
 	},
-	"shadow_clone": {
-		"id": "shadow_clone", "name": "Shadow Clone", "type": "ability",
-		"description": "Creates a decoy that attracts enemies and explodes after a delay.",
-		"damage": 25.0, "health": 30.0, "duration": 5.0, "cooldown": 8.0,
-		"color": Color(0.3, 0.0, 0.5), "level": 1,
-		"upgrade_desc": "Explosion damage +30%, Duration +1s"
-	},
 	"venom_trail": {
 		"id": "venom_trail", "name": "Venom Trail", "type": "ability",
 		"description": "Leave a trail of poison behind you that damages enemies.",
@@ -149,15 +137,48 @@ const ABILITY_DATABASE := {
 		"color": Color(0.0, 0.8, 0.2), "level": 1,
 		"upgrade_desc": "Damage +25%, Width +0.5m"
 	},
-	"meteor_strike": {
-		"id": "meteor_strike", "name": "Meteor Strike", "type": "ability",
-		"description": "Calls down a meteor on the densest cluster of enemies.",
-		"damage": 60.0, "radius": 4.0, "cooldown": 10.0,
-		"color": Color(1.0, 0.4, 0.0), "level": 1,
-		"upgrade_desc": "Damage +25%, Cooldown -1.5s"
+	"lifesteal_aura": {
+		"id": "lifesteal_aura", "name": "Vampiric Aura", "type": "ability",
+		"description": "Passively heals you for a percentage of all damage dealt.",
+		"lifesteal": 0.03,
+		"color": Color(0.5, 0.0, 0.0), "level": 1,
+		"upgrade_desc": "Lifesteal +2%"
+	},
+	"thorns_aura": {
+		"id": "thorns_aura", "name": "Thorns Aura", "type": "ability",
+		"description": "Reflects a percentage of damage taken back to attackers.",
+		"thorns": 0.10,
+		"color": Color(0.6, 0.0, 0.3), "level": 1,
+		"upgrade_desc": "Reflect +5%"
 	},
 }
 
+# Skills: button-activated abilities with cooldowns (managed by SkillManager)
+const SKILL_DATABASE := {
+	"bomb": {
+		"id": "bomb", "name": "Frag Grenade", "type": "skill",
+		"description": "Throwable explosive. Press the skill button to throw. Recharges over time.",
+		"damage": 40.0, "radius": 5.0, "cooldown": 8.0,
+		"color": Color(1.0, 0.6, 0.0), "level": 1,
+		"upgrade_desc": "Damage +25%, Radius +15%, Cooldown -0.5s"
+	},
+	"shadow_clone": {
+		"id": "shadow_clone", "name": "Shadow Clone", "type": "skill",
+		"description": "Creates a decoy that attracts enemies and explodes when destroyed.",
+		"damage": 25.0, "health": 30.0, "duration": 5.0, "cooldown": 12.0,
+		"color": Color(0.3, 0.0, 0.5), "level": 1,
+		"upgrade_desc": "Explosion damage +30%, Duration +1s, Cooldown -0.5s"
+	},
+	"meteor_strike": {
+		"id": "meteor_strike", "name": "Meteor Strike", "type": "skill",
+		"description": "Calls down a meteor on the densest cluster of enemies.",
+		"damage": 60.0, "radius": 4.0, "cooldown": 15.0,
+		"color": Color(1.0, 0.4, 0.0), "level": 1,
+		"upgrade_desc": "Damage +25%, Cooldown -1s, Radius +0.5m"
+	},
+}
+
+# Traits: permanent starting stats, values only go up during a run
 const TRAIT_DATABASE := {
 	"max_health": {
 		"trait_name": "max_health", "name": "Vitality", "type": "trait",
@@ -219,17 +240,60 @@ const TRAIT_DATABASE := {
 		"description": "Gain 5 armor that reduces damage by a percentage.",
 		"trait_value": 5.0, "color": Color(0.7, 0.7, 0.8),
 	},
-	"thorns": {
-		"trait_name": "thorns", "name": "Thorns", "type": "trait",
-		"description": "Reflect 10% of damage taken back to attackers.",
-		"trait_value": 0.1, "color": Color(0.6, 0.0, 0.3),
+}
+
+# Relic database -- purchasable persistent perks from the shop
+const RELIC_DATABASE := {
+	"blood_chalice": {
+		"id": "blood_chalice", "name": "Blood Chalice", "type": "relic",
+		"description": "Start each run with +25 max health.",
+		"cost": 50, "bonuses": {"max_health": 25.0},
+		"color": Color(0.8, 0.0, 0.0),
 	},
-	"lifesteal": {
-		"trait_name": "lifesteal", "name": "Vampirism", "type": "trait",
-		"description": "Heal for 3% of damage dealt.",
-		"trait_value": 0.03, "color": Color(0.5, 0.0, 0.0),
+	"iron_boots": {
+		"id": "iron_boots", "name": "Iron Boots", "type": "relic",
+		"description": "Start each run with +5 armor.",
+		"cost": 40, "bonuses": {"armor": 5.0},
+		"color": Color(0.6, 0.6, 0.7),
+	},
+	"swift_cloak": {
+		"id": "swift_cloak", "name": "Swift Cloak", "type": "relic",
+		"description": "Start each run with +1.0 movement speed.",
+		"cost": 35, "bonuses": {"speed": 1.0},
+		"color": Color(0.2, 0.8, 0.5),
+	},
+	"marksman_eye": {
+		"id": "marksman_eye", "name": "Marksman's Eye", "type": "relic",
+		"description": "Start each run with +8% crit chance.",
+		"cost": 60, "bonuses": {"crit_chance": 0.08},
+		"color": Color(1.0, 0.7, 0.0),
+	},
+	"soul_magnet": {
+		"id": "soul_magnet", "name": "Soul Magnet", "type": "relic",
+		"description": "Start each run with +2.0 collect range.",
+		"cost": 30, "bonuses": {"collect_range": 2.0},
+		"color": Color(0.4, 0.3, 1.0),
+	},
+	"war_drum": {
+		"id": "war_drum", "name": "War Drum", "type": "relic",
+		"description": "Start each run with +10% damage.",
+		"cost": 55, "bonuses": {"damage_mult": 0.10},
+		"color": Color(1.0, 0.2, 0.1),
+	},
+	"ghost_ring": {
+		"id": "ghost_ring", "name": "Ghost Ring", "type": "relic",
+		"description": "Start each run with +6% dodge chance.",
+		"cost": 45, "bonuses": {"dodge_chance": 0.06},
+		"color": Color(0.5, 0.5, 0.9),
+	},
+	"phoenix_feather": {
+		"id": "phoenix_feather", "name": "Phoenix Feather", "type": "relic",
+		"description": "Start each run with +2 HP/s regen.",
+		"cost": 65, "bonuses": {"health_regen": 2.0},
+		"color": Color(1.0, 0.5, 0.0),
 	},
 }
+
 
 func generate_level_up_choices(player_level: int) -> Array:
 	var choices: Array = []
@@ -241,18 +305,25 @@ func generate_level_up_choices(player_level: int) -> Array:
 		var choice: Dictionary
 		var roll := randf()
 
-		if roll < 0.35:
+		if roll < 0.30:
 			# Weapon choice
 			if weapons_full and not GameManager.player_weapons.is_empty():
 				choice = _generate_weapon_upgrade()
 			else:
 				choice = _generate_new_weapon()
-		elif roll < 0.65:
+		elif roll < 0.55:
 			# Ability choice
 			if abilities_full and not GameManager.player_abilities.is_empty():
 				choice = _generate_ability_upgrade()
 			else:
 				choice = _generate_new_ability()
+		elif roll < 0.70:
+			# Skill choice (new skill if slots available)
+			var skills_full := GameManager.player_skills.size() >= GameManager.MAX_SKILLS
+			if skills_full and not GameManager.player_skills.is_empty():
+				choice = _generate_skill_upgrade()
+			else:
+				choice = _generate_new_skill()
 		else:
 			# Trait choice
 			choice = _generate_trait_upgrade(player_level)
@@ -265,7 +336,14 @@ func generate_level_up_choices(player_level: int) -> Array:
 
 		choices.append(choice)
 
+	# 1 in 20 chance: add a 4th choice that upgrades an equipped skill
+	if randf() < GameManager.SKILL_UPGRADE_CHANCE and not GameManager.player_skills.is_empty():
+		var skill_choice := _generate_skill_upgrade()
+		if not skill_choice.is_empty():
+			choices.append(skill_choice)
+
 	return choices
+
 
 func _generate_new_weapon() -> Dictionary:
 	var available_ids := WEAPON_DATABASE.keys()
@@ -324,6 +402,35 @@ func _generate_ability_upgrade() -> Dictionary:
 		"description": ability.get("upgrade_desc", "Upgrade this ability."),
 		"current_level": ability.get("level", 1),
 		"color": ability.get("color", Color.WHITE),
+	}
+
+func _generate_new_skill() -> Dictionary:
+	var available_ids := SKILL_DATABASE.keys()
+	var owned_ids: Array[String] = []
+	for s in GameManager.player_skills:
+		owned_ids.append(s.get("id", ""))
+	var candidates: Array = []
+	for sid in available_ids:
+		if sid not in owned_ids:
+			candidates.append(sid)
+	if candidates.is_empty():
+		return _generate_skill_upgrade()
+	var chosen_id: String = candidates[randi() % candidates.size()]
+	return SKILL_DATABASE[chosen_id].duplicate(true)
+
+func _generate_skill_upgrade() -> Dictionary:
+	if GameManager.player_skills.is_empty():
+		return _generate_trait_upgrade(1)
+	var idx := randi() % GameManager.player_skills.size()
+	var skill: Dictionary = GameManager.player_skills[idx]
+	return {
+		"type": "skill_upgrade",
+		"skill_index": idx,
+		"id": skill.get("id", ""),
+		"name": skill.get("name", "Unknown") + " UP",
+		"description": skill.get("upgrade_desc", "Upgrade this skill."),
+		"current_level": skill.get("level", 1),
+		"color": skill.get("color", Color.WHITE),
 	}
 
 func _generate_trait_upgrade(_player_level: int) -> Dictionary:

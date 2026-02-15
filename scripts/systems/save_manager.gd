@@ -1,15 +1,18 @@
 extends Node
 ## Manages save/load with roguelike permadeath.
-## On player death, the save file is DELETED — restart from Level 1.
+## On player death, the run save file is DELETED — restart from Level 1.
 ## On level completion, progress is saved so the player can resume.
+## Coins, relics, and vouchers persist across deaths in a separate meta save.
 
 const SAVE_PATH := "user://till_the_end_save.dat"
+const META_SAVE_PATH := "user://till_the_end_meta.dat"
 
 # Save data structure
 var save_data: Dictionary = {}
 
 func _ready() -> void:
 	EventBus.player_died.connect(_on_player_died)
+	_load_meta()
 
 
 ## Save current run progress (called after beating a level's boss).
@@ -39,14 +42,14 @@ func load_progress() -> Dictionary:
 	return {}
 
 
-## Delete save file — called on player death (permadeath).
+## Delete run save file — called on player death (permadeath).
 func delete_save() -> void:
 	if FileAccess.file_exists(SAVE_PATH):
 		DirAccess.remove_absolute(SAVE_PATH)
 	save_data.clear()
 
 
-## Check if a save file exists.
+## Check if a run save file exists.
 func has_save() -> bool:
 	return FileAccess.file_exists(SAVE_PATH)
 
@@ -60,7 +63,9 @@ func create_save_from_state() -> Dictionary:
 		"player_exp_to_next": GameManager.player_exp_to_next,
 		"player_weapons": GameManager.player_weapons.duplicate(true),
 		"player_abilities": GameManager.player_abilities.duplicate(true),
+		"player_skills": GameManager.player_skills.duplicate(true),
 		"player_traits": GameManager.player_traits.duplicate(true),
+		"weapon_ammo": GameManager.weapon_ammo.duplicate(true),
 		"total_kills": GameManager.total_kills,
 		"run_time": GameManager.run_time,
 	}
@@ -76,12 +81,55 @@ func restore_state_from_save(data: Dictionary) -> void:
 	GameManager.player_exp_to_next = data.get("player_exp_to_next", 100.0)
 	GameManager.player_weapons = data.get("player_weapons", []).duplicate(true)
 	GameManager.player_abilities = data.get("player_abilities", []).duplicate(true)
+	GameManager.player_skills = data.get("player_skills", []).duplicate(true)
 	if data.has("player_traits"):
 		GameManager.player_traits = data.get("player_traits", {}).duplicate(true)
+	if data.has("weapon_ammo"):
+		GameManager.weapon_ammo = data.get("weapon_ammo", {}).duplicate(true)
 	GameManager.total_kills = data.get("total_kills", 0)
 	GameManager.run_time = data.get("run_time", 0.0)
 
 
-## Called when the player dies — permadeath erases progress.
+## Called when the player dies — permadeath erases run progress.
+## Coins, relics, and vouchers are preserved (meta save).
 func _on_player_died() -> void:
 	delete_save()
+	_save_meta()
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# Meta save: coins, relics, vouchers (persist across deaths)
+# ══════════════════════════════════════════════════════════════════════════
+
+func _save_meta() -> void:
+	var meta := {
+		"coins": GameManager.coins,
+		"owned_relics": GameManager.owned_relics.duplicate(true),
+		"equipped_relics": GameManager.equipped_relics.duplicate(true),
+		"relic_slot_modifier": GameManager.relic_slot_modifier,
+		"vouchers": GameManager.vouchers.duplicate(true),
+	}
+	var file := FileAccess.open(META_SAVE_PATH, FileAccess.WRITE)
+	if file:
+		file.store_var(meta)
+		file.close()
+
+
+func _load_meta() -> void:
+	if not FileAccess.file_exists(META_SAVE_PATH):
+		return
+	var file := FileAccess.open(META_SAVE_PATH, FileAccess.READ)
+	if file:
+		var data = file.get_var()
+		file.close()
+		if data is Dictionary:
+			GameManager.coins = data.get("coins", 0)
+			GameManager.owned_relics = data.get("owned_relics", []).duplicate(true)
+			GameManager.equipped_relics = data.get("equipped_relics", []).duplicate(true)
+			GameManager.relic_slot_modifier = data.get("relic_slot_modifier", 0)
+			GameManager.vouchers = data.get("vouchers", []).duplicate(true)
+
+
+## Call this after any shop transaction to persist the meta state.
+func save_meta() -> void:
+	_save_meta()

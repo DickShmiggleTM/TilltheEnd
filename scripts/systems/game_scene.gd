@@ -11,6 +11,7 @@ extends Node3D
 const PlayerControllerScript := preload("res://scripts/player/player_controller.gd")
 const WeaponManagerScript := preload("res://scripts/weapons/weapon_manager.gd")
 const AbilityManagerScript := preload("res://scripts/abilities/ability_manager.gd")
+const SkillManagerScript := preload("res://scripts/abilities/skill_manager.gd")
 const WaveManagerScript := preload("res://scripts/systems/wave_manager.gd")
 const UpgradeGeneratorScript := preload("res://scripts/systems/upgrade_generator.gd")
 
@@ -30,6 +31,7 @@ var map_generator: Node3D = null
 var player: CharacterBody3D = null
 var weapon_manager: Node3D = null
 var ability_manager: Node3D = null
+var skill_manager: Node3D = null
 var wave_manager: Node = null
 var upgrade_generator: Node = null
 
@@ -170,6 +172,12 @@ func _setup_player() -> void:
 	ability_manager.set_script(AbilityManagerScript)
 	ability_manager.name = "AbilityManager"
 	player.add_child(ability_manager)
+
+	# Create SkillManager as a child of the player (manages 3 active skill slots)
+	skill_manager = Node3D.new()
+	skill_manager.set_script(SkillManagerScript)
+	skill_manager.name = "SkillManager"
+	player.add_child(skill_manager)
 
 
 func _setup_ui() -> void:

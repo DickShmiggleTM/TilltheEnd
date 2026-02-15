@@ -1,6 +1,7 @@
 extends Node
 ## Central game state manager. Handles run state, stats, game flow,
-## and multi-level campaign progression with permadeath.
+## multi-level campaign progression with permadeath, skills, relics, vouchers,
+## and the coin economy.
 
 # ── Game state ──────────────────────────────────────────────────────────
 enum GameState { MENU, PLAYING, PAUSED, LEVEL_UP, GAME_OVER, VICTORY, LEVEL_COMPLETE, TRANSITIONING }
@@ -16,20 +17,51 @@ var run_time: float = 0.0
 var is_boss_wave: bool = false
 var level_kills: int = 0        # Kills this level only
 
-# ── Player progression (persists across levels within a run) ────────────
+# ── Player progression (persists across levels within a run, reset on death) ──
 var player_stats: Dictionary = {}
 var player_weapons: Array[Dictionary] = []
 var player_abilities: Array[Dictionary] = []
+var player_skills: Array[Dictionary] = []
 var player_traits: Dictionary = {}
 var player_level: int = 1
 var player_exp: float = 0.0
 var player_exp_to_next: float = 100.0
 
+# ── Weapon ammo tracking (ammo_type -> current count) ───────────────────
+var weapon_ammo: Dictionary = {}
+const DEFAULT_AMMO: Dictionary = {
+	"bullet": 120,
+	"shell": 24,
+	"rocket": 8,
+	"cell": 60,
+	"fuel": 100,
+	"bolt": 16,
+	"acid": 30,
+}
+
+# ── Coin economy (persists across deaths) ───────────────────────────────
+var coins: int = 0
+
+# ── Relic system (persists across deaths, bought from shop) ─────────────
+var owned_relics: Array[Dictionary] = []
+var equipped_relics: Array[Dictionary] = []
+const MAX_EQUIPPED_RELICS := 5
+var relic_slot_modifier: int = 0  # Vouchers can increase/decrease this
+
+# ── Voucher system (persists across deaths, earned through achievements) ─
+var vouchers: Array[Dictionary] = []
+const MAX_VOUCHERS := 20
+
+# ── Capacity constants ──────────────────────────────────────────────────
 const MAX_WEAPONS := 6
 const MAX_ABILITIES := 6
+const MAX_SKILLS := 3
 const EXP_GROWTH_RATE := 1.35
 const BASE_EXP_NEEDED := 100.0
 const TOTAL_LEVELS := 7
+
+# ── Skill upgrade chance on level-up (1 in 20) ─────────────────────────
+const SKILL_UPGRADE_CHANCE := 0.05
 
 # ── Per-wave difficulty scaling (within a level) ────────────────────────
 const ENEMY_HP_SCALE := 1.2
@@ -45,6 +77,8 @@ func _ready() -> void:
 	EventBus.exp_collected.connect(_on_exp_collected)
 	EventBus.upgrade_selected.connect(_on_upgrade_selected)
 	EventBus.boss_killed.connect(_on_boss_killed)
+	EventBus.ammo_collected.connect(_on_ammo_collected)
+	EventBus.coin_collected.connect(_on_coin_collected)
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -65,7 +99,10 @@ func start_new_run() -> void:
 	player_exp_to_next = BASE_EXP_NEEDED
 	player_weapons.clear()
 	player_abilities.clear()
+	player_skills.clear()
 	_reset_traits()
+	_reset_ammo()
+	_apply_relic_bonuses()
 	_load_level_data(1)
 	EventBus.run_started.emit()
 	EventBus.game_started.emit()
@@ -78,6 +115,7 @@ func continue_run(from_level: int) -> void:
 	current_wave = 0
 	level_kills = 0
 	is_boss_wave = false
+	_apply_relic_bonuses()
 	_load_level_data(from_level)
 	EventBus.run_started.emit()
 	EventBus.game_started.emit()
@@ -87,7 +125,6 @@ func continue_run(from_level: int) -> void:
 func advance_to_next_level() -> void:
 	current_level += 1
 	if current_level > TOTAL_LEVELS:
-		# Game complete! Final victory!
 		state = GameState.VICTORY
 		EventBus.game_won.emit()
 		return
@@ -108,6 +145,11 @@ func _load_level_data(level_num: int) -> void:
 	total_waves = current_level_data.get("waves", 10)
 
 
+# ══════════════════════════════════════════════════════════════════════════
+# Traits: permanent starting stats. No new traits are ever added --
+# only existing values are modified during a run. Reset on death.
+# ══════════════════════════════════════════════════════════════════════════
+
 func _reset_traits() -> void:
 	player_traits = {
 		"max_health": 100.0,
@@ -122,13 +164,109 @@ func _reset_traits() -> void:
 		"dodge_chance": 0.0,
 		"health_regen": 0.0,
 		"armor": 0.0,
-		"thorns": 0.0,
-		"lifesteal": 0.0,
 	}
 
 
 func get_trait(trait_name: String) -> float:
 	return player_traits.get(trait_name, 0.0)
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# Ammo management
+# ══════════════════════════════════════════════════════════════════════════
+
+func _reset_ammo() -> void:
+	weapon_ammo = DEFAULT_AMMO.duplicate()
+
+
+func get_ammo(ammo_type: String) -> int:
+	return weapon_ammo.get(ammo_type, 0)
+
+
+func consume_ammo(ammo_type: String, amount: int = 1) -> bool:
+	var current := weapon_ammo.get(ammo_type, 0)
+	if current >= amount:
+		weapon_ammo[ammo_type] = current - amount
+		return true
+	return false
+
+
+func add_ammo(ammo_type: String, amount: int) -> void:
+	weapon_ammo[ammo_type] = weapon_ammo.get(ammo_type, 0) + amount
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# Relic system (persists across deaths)
+# ══════════════════════════════════════════════════════════════════════════
+
+func _apply_relic_bonuses() -> void:
+	for relic in equipped_relics:
+		var bonuses: Dictionary = relic.get("bonuses", {})
+		for trait_name in bonuses:
+			if player_traits.has(trait_name):
+				player_traits[trait_name] += bonuses[trait_name]
+
+
+func get_max_relic_slots() -> int:
+	return MAX_EQUIPPED_RELICS + relic_slot_modifier
+
+
+func equip_relic(relic_data: Dictionary) -> bool:
+	if equipped_relics.size() >= get_max_relic_slots():
+		return false
+	equipped_relics.append(relic_data)
+	EventBus.relic_equipped.emit(relic_data)
+	return true
+
+
+func unequip_relic(index: int) -> void:
+	if index >= 0 and index < equipped_relics.size():
+		var relic := equipped_relics[index]
+		equipped_relics.remove_at(index)
+		EventBus.relic_unequipped.emit(relic.get("id", ""))
+
+
+func buy_relic(relic_data: Dictionary) -> bool:
+	var cost: int = relic_data.get("cost", 0)
+	if not spend_coins(cost):
+		return false
+	owned_relics.append(relic_data.duplicate(true))
+	return true
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# Voucher system (persists across deaths)
+# ══════════════════════════════════════════════════════════════════════════
+
+func add_voucher(voucher_data: Dictionary) -> bool:
+	if vouchers.size() >= MAX_VOUCHERS:
+		return false
+	vouchers.append(voucher_data.duplicate(true))
+	return true
+
+
+func redeem_voucher(index: int) -> void:
+	if index >= 0 and index < vouchers.size():
+		var voucher := vouchers[index]
+		EventBus.voucher_redeemed.emit(voucher)
+		vouchers.remove_at(index)
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# Coin management (persists across deaths)
+# ══════════════════════════════════════════════════════════════════════════
+
+func add_coins(amount: int) -> void:
+	coins += amount
+	EventBus.coins_changed.emit(coins)
+
+
+func spend_coins(amount: int) -> bool:
+	if coins >= amount:
+		coins -= amount
+		EventBus.coins_changed.emit(coins)
+		return true
+	return false
 
 
 func _process(delta: float) -> void:
@@ -170,7 +308,6 @@ func get_wave_enemy_dmg_mult(wave: int) -> float:
 func get_wave_enemy_speed_mult(wave: int) -> float:
 	return pow(ENEMY_SPEED_SCALE, wave - 1) * get_level_enemy_speed_mult()
 
-## Get which enemy types are available this level and their spawn weights.
 func get_level_enemy_types() -> Array:
 	return current_level_data.get("enemy_types", ["melee"])
 
@@ -220,6 +357,12 @@ func _on_upgrade_selected(upgrade: Dictionary) -> void:
 				EventBus.ability_acquired.emit(upgrade)
 			else:
 				_upgrade_random_ability()
+		"skill":
+			if player_skills.size() < MAX_SKILLS:
+				player_skills.append(upgrade)
+				EventBus.skill_acquired.emit(upgrade)
+			else:
+				_upgrade_random_skill()
 		"trait":
 			var trait_name: String = upgrade.get("trait_name", "")
 			var trait_value: float = upgrade.get("trait_value", 0.0)
@@ -236,6 +379,11 @@ func _on_upgrade_selected(upgrade: Dictionary) -> void:
 			if idx < player_abilities.size():
 				player_abilities[idx]["level"] = player_abilities[idx].get("level", 1) + 1
 				EventBus.ability_upgraded.emit(player_abilities[idx].get("id", ""), player_abilities[idx]["level"])
+		"skill_upgrade":
+			var idx: int = upgrade.get("skill_index", 0)
+			if idx < player_skills.size():
+				player_skills[idx]["level"] = player_skills[idx].get("level", 1) + 1
+				EventBus.skill_upgraded.emit(player_skills[idx].get("id", ""), player_skills[idx]["level"])
 	state = GameState.PLAYING
 	get_tree().paused = false
 
@@ -256,9 +404,24 @@ func _upgrade_random_ability() -> void:
 	EventBus.ability_upgraded.emit(player_abilities[idx].get("id", ""), player_abilities[idx]["level"])
 
 
+func _upgrade_random_skill() -> void:
+	if player_skills.is_empty():
+		return
+	var idx := randi() % player_skills.size()
+	player_skills[idx]["level"] = player_skills[idx].get("level", 1) + 1
+	EventBus.skill_upgraded.emit(player_skills[idx].get("id", ""), player_skills[idx]["level"])
+
+
 func _on_boss_killed() -> void:
-	# Boss defeated — advance to next level (not immediate victory anymore)
 	advance_to_next_level()
+
+
+func _on_ammo_collected(ammo_type: String, amount: int) -> void:
+	add_ammo(ammo_type, amount)
+
+
+func _on_coin_collected(amount: int) -> void:
+	add_coins(amount)
 
 
 func register_enemies(count: int) -> void:

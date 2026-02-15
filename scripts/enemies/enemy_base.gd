@@ -53,7 +53,9 @@ const FLASH_DURATION := 0.1
 const GRAVITY := 9.8
 const HEALTH_DROP_CHANCE := 0.08
 const AMMO_DROP_CHANCE := 0.12
-const BOMB_AMMO_DROP_CHANCE := 0.04
+const COIN_DROP_CHANCE := 0.25
+const COIN_DROP_MIN := 1
+const COIN_DROP_MAX := 3
 
 # ---------------------------------------------------------------------------
 # Virtual helpers – override in subclasses
@@ -191,8 +193,8 @@ func die() -> void:
 		_drop_health()
 	if randf() < AMMO_DROP_CHANCE:
 		_drop_ammo()
-	if randf() < BOMB_AMMO_DROP_CHANCE:
-		_drop_bomb_ammo()
+	if randf() < COIN_DROP_CHANCE:
+		_drop_coins()
 
 	# -- Signals ---------------------------------------------------------
 	EventBus.enemy_killed.emit(self, global_position)
@@ -207,7 +209,6 @@ func die() -> void:
 
 func _drop_exp(amount: float) -> void:
 	EventBus.exp_dropped.emit(global_position, amount)
-	# Instantiate pickup via static helper
 	var parent := get_tree().current_scene
 	if parent and parent.has_method("get_pickup_container"):
 		parent = parent.get_pickup_container()
@@ -230,11 +231,12 @@ func _drop_ammo() -> void:
 	Pickup.create_ammo_drop(parent, global_position + Vector3(0, 0.5, 0))
 
 
-func _drop_bomb_ammo() -> void:
+func _drop_coins() -> void:
 	var parent := get_tree().current_scene
 	if parent == null:
 		return
-	Pickup.create_bomb_ammo_drop(parent, global_position + Vector3(0, 0.5, 0))
+	var amount := randi_range(COIN_DROP_MIN, COIN_DROP_MAX)
+	Pickup.create_coin_drop(parent, global_position + Vector3(0, 0.5, 0), amount)
 
 # ---------------------------------------------------------------------------
 # Death FX (override for custom explosions etc.)

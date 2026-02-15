@@ -1,44 +1,31 @@
-extends AbilityBase
-## Meteor Strike -- finds the densest cluster of enemies and drops a meteor
-## from the sky, dealing massive area damage. Includes screen shake on impact.
+extends SkillBase
+## Meteor Strike -- player-activated skill that drops a meteor on the densest
+## cluster of enemies. Massive area damage with screen shake. Recharges over time.
 
 # ── Tuning ────────────────────────────────────────────────────────────
 var base_damage: float = 60.0
 var impact_radius: float = 4.0
-var cooldown: float = 10.0
-var fall_height: float = 30.0     # how high the meteor starts
-var fall_duration: float = 0.6    # seconds to reach ground
-var cluster_search_radius: float = 6.0  # radius used to score enemy density
-
-# ── Internal ──────────────────────────────────────────────────────────
-var _cooldown_timer: float = 0.0
+var fall_height: float = 30.0
+var fall_duration: float = 0.6
+var cluster_search_radius: float = 6.0
 
 
-# ── Ability interface ─────────────────────────────────────────────────
+# ── Skill interface ──────────────────────────────────────────────────
 
-func activate() -> void:
+func on_activate() -> void:
 	_apply_level_stats()
-	_cooldown_timer = cooldown * 0.5
 
 
 func _on_upgrade() -> void:
 	_apply_level_stats()
 
 
+func _execute() -> void:
+	_launch_meteor()
+
+
 func deactivate() -> void:
 	pass
-
-
-# ── Process ───────────────────────────────────────────────────────────
-
-func _process(delta: float) -> void:
-	if player == null:
-		return
-
-	_cooldown_timer -= delta
-	if _cooldown_timer <= 0.0:
-		_cooldown_timer = cooldown
-		_launch_meteor()
 
 
 # ── Private ───────────────────────────────────────────────────────────
@@ -46,21 +33,21 @@ func _process(delta: float) -> void:
 func _apply_level_stats() -> void:
 	base_damage = 60.0 * (1.0 + (level - 1) * 0.25)
 	impact_radius = 4.0 + level * 0.5
-	cooldown = maxf(10.0 - level * 1.0, 4.0)
+	cooldown = maxf(15.0 - level * 1.0, 6.0)
 	cluster_search_radius = 6.0 + level * 0.5
 
 
 func _launch_meteor() -> void:
 	var target_pos := _find_best_cluster()
 	if target_pos == Vector3.ZERO:
-		# No enemies found -- refund some cooldown
-		_cooldown_timer = 1.0
+		# No enemies found -- refund cooldown partially
+		cooldown_remaining = 2.0
+		is_ready = false
 		return
 
 	_spawn_meteor(target_pos)
 
 
-## Find the position that has the highest density of nearby enemies.
 func _find_best_cluster() -> Vector3:
 	var enemies := _get_enemies()
 	if enemies.is_empty():
@@ -86,7 +73,6 @@ func _spawn_meteor(target_pos: Vector3) -> void:
 	var meteor := Node3D.new()
 	meteor.name = "Meteor"
 
-	# Visual: large fiery sphere
 	var sphere := CSGSphere3D.new()
 	sphere.radius = 1.0
 	sphere.radial_segments = 10
@@ -101,7 +87,6 @@ func _spawn_meteor(target_pos: Vector3) -> void:
 	sphere.material = mat
 	meteor.add_child(sphere)
 
-	# Tail / trail glow
 	var trail := CSGSphere3D.new()
 	trail.radius = 0.6
 	trail.radial_segments = 6
@@ -118,7 +103,6 @@ func _spawn_meteor(target_pos: Vector3) -> void:
 	trail.position = Vector3.UP * 1.2
 	meteor.add_child(trail)
 
-	# Shadow / target indicator on the ground
 	var shadow := CSGCylinder3D.new()
 	shadow.radius = impact_radius * 0.5
 	shadow.height = 0.05
@@ -136,17 +120,14 @@ func _spawn_meteor(target_pos: Vector3) -> void:
 	get_tree().current_scene.add_child(shadow)
 	shadow.global_position = Vector3(target_pos.x, 0.05, target_pos.z)
 
-	# Expand the shadow indicator
 	var shadow_tw := get_tree().create_tween()
 	shadow_tw.tween_property(shadow, "radius", impact_radius, fall_duration * 0.8).set_ease(Tween.EASE_OUT)
 	shadow_tw.tween_property(shadow_mat, "albedo_color:a", 0.0, 0.2)
 	shadow_tw.tween_callback(shadow.queue_free)
 
-	# Place meteor high above target
 	get_tree().current_scene.add_child(meteor)
 	meteor.global_position = target_pos + Vector3.UP * fall_height
 
-	# Fall animation
 	var tw := get_tree().create_tween()
 	tw.tween_property(meteor, "global_position", target_pos, fall_duration).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
 	tw.tween_callback(func() -> void:
@@ -160,21 +141,16 @@ func _on_meteor_impact(meteor: Node3D, impact_pos: Vector3) -> void:
 
 	var damage := get_scaled_damage(base_damage)
 
-	# Damage all enemies in radius
 	for enemy in _get_enemies_in_range(impact_pos, impact_radius):
 		var dist := enemy.global_position.distance_to(impact_pos)
-		var falloff := 1.0 - (dist / impact_radius) * 0.4  # 60-100%
+		var falloff := 1.0 - (dist / impact_radius) * 0.4
 		_deal_damage(enemy, damage * falloff)
 
-	# Explosion visual
 	_spawn_impact_visual(impact_pos)
-
-	# Screen shake
 	_apply_screen_shake()
 
 
 func _spawn_impact_visual(pos: Vector3) -> void:
-	# Main explosion sphere
 	var explosion := CSGSphere3D.new()
 	explosion.radius = 1.0
 	explosion.radial_segments = 10
@@ -199,7 +175,6 @@ func _spawn_impact_visual(pos: Vector3) -> void:
 	tw.set_parallel(false)
 	tw.tween_callback(explosion.queue_free)
 
-	# Shockwave ring
 	var ring := CSGTorus3D.new()
 	ring.inner_radius = 0.5
 	ring.outer_radius = 1.0
@@ -229,7 +204,6 @@ func _spawn_impact_visual(pos: Vector3) -> void:
 
 
 func _apply_screen_shake() -> void:
-	# Try to find the active camera and shake it
 	var camera := get_viewport().get_camera_3d()
 	if camera == null:
 		return
@@ -246,7 +220,6 @@ func _apply_screen_shake() -> void:
 			randf_range(-shake_intensity, shake_intensity),
 			0.0
 		)
-		# Decrease intensity over time
 		offset *= 1.0 - (float(i) / steps)
 		tw.tween_property(camera, "position", original_pos + offset, shake_duration / steps)
 	tw.tween_property(camera, "position", original_pos, shake_duration / steps)

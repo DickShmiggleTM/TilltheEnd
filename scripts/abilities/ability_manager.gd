@@ -1,23 +1,25 @@
 extends Node3D
 class_name AbilityManager
 ## Manages all active abilities for the player.
+## Abilities are passive/auto-activating and require NO player input.
 ## Attach as a child of the player node. Listens to EventBus for
-## ability_acquired, ability_upgraded, and bomb_ammo_collected signals.
+## ability_acquired and ability_upgraded signals.
 
 const MAX_ABILITIES := 6
 
 # Map from ability_id -> scene script path
+# Only passive/auto-activating abilities belong here.
+# Skills (bomb, shadow_clone, meteor_strike) are managed by SkillManager.
 const ABILITY_SCRIPTS: Dictionary = {
 	"auto_turret":     "res://scripts/abilities/auto_turret.gd",
 	"death_skulls":    "res://scripts/abilities/death_skulls.gd",
-	"bomb":            "res://scripts/abilities/bomb_ability.gd",
 	"chain_lightning":  "res://scripts/abilities/chain_lightning.gd",
 	"fire_nova":       "res://scripts/abilities/fire_nova.gd",
 	"blood_scythe":    "res://scripts/abilities/blood_scythe.gd",
 	"frost_aura":      "res://scripts/abilities/frost_aura.gd",
-	"shadow_clone":    "res://scripts/abilities/shadow_clone.gd",
 	"venom_trail":     "res://scripts/abilities/venom_trail.gd",
-	"meteor_strike":   "res://scripts/abilities/meteor_strike.gd",
+	"lifesteal_aura":  "res://scripts/abilities/lifesteal_aura.gd",
+	"thorns_aura":     "res://scripts/abilities/thorns_aura.gd",
 }
 
 # Active ability nodes keyed by ability_id
@@ -31,7 +33,6 @@ var _active_abilities: Dictionary = {}
 func _ready() -> void:
 	EventBus.ability_acquired.connect(_on_ability_acquired)
 	EventBus.ability_upgraded.connect(_on_ability_upgraded)
-	EventBus.bomb_ammo_collected.connect(_on_bomb_ammo_collected)
 
 
 # ── Public API ────────────────────────────────────────────────────────
@@ -109,10 +110,3 @@ func _on_ability_acquired(ability_data: Dictionary) -> void:
 
 func _on_ability_upgraded(ability_id: String, new_level: int) -> void:
 	upgrade_ability(ability_id, new_level)
-
-
-func _on_bomb_ammo_collected(amount: int) -> void:
-	if _active_abilities.has("bomb"):
-		var bomb_node: Node3D = _active_abilities["bomb"]
-		if bomb_node.has_method("add_charges"):
-			bomb_node.add_charges(amount)
