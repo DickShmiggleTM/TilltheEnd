@@ -64,18 +64,24 @@ layout_mode = 1
 anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
-offset_left = -150.0
+offset_left = -200.0
 offset_top = 20.0
-offset_right = 150.0
-offset_bottom = 110.0
+offset_right = 200.0
+offset_bottom = 140.0
 grow_horizontal = 2
 alignment = 0
 mouse_filter = 2
 
+[node name="LevelInfoLabel" type="Label" parent="HUDRoot/TopCenter"]
+unique_name_in_owner = true
+layout_mode = 2
+text = ""
+horizontal_alignment = 1
+
 [node name="WaveLabel" type="Label" parent="HUDRoot/TopCenter"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "WAVE 0/12"
+text = "LEVEL 1 - WAVE 0/8"
 horizontal_alignment = 1
 
 [node name="EnemiesLabel" type="Label" parent="HUDRoot/TopCenter"]
@@ -116,9 +122,9 @@ anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
 offset_left = -400.0
-offset_top = 130.0
+offset_top = 160.0
 offset_right = 400.0
-offset_bottom = 210.0
+offset_bottom = 240.0
 grow_horizontal = 2
 mouse_filter = 2
 

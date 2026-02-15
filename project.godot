@@ -15,6 +15,7 @@ config/icon="res://icon.svg"
 GameManager="*res://scripts/systems/game_manager.gd"
 AudioManager="*res://scripts/systems/audio_manager.gd"
 EventBus="*res://scripts/systems/event_bus.gd"
+SaveManager="*res://scripts/systems/save_manager.gd"
 
 [display]
 

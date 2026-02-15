@@ -1,0 +1,104 @@
+[gd_scene load_steps=2 format=3 uid="uid://c6lvlintro0001"]
+
+[ext_resource type="Script" path="res://scripts/ui/level_intro_screen.gd" id="1"]
+
+[node name="LevelIntroScreen" type="CanvasLayer"]
+layer = 30
+process_mode = 3
+script = ExtResource("1")
+
+[node name="Root" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Overlay" type="ColorRect" parent="Root"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+color = Color(0.02, 0.0, 0.03, 0.95)
+
+[node name="ContentCenter" type="VBoxContainer" parent="Root"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -460.0
+offset_top = -600.0
+offset_right = 460.0
+offset_bottom = 600.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 30
+alignment = 1
+
+[node name="TopSpacer" type="Control" parent="Root/ContentCenter"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 60)
+
+[node name="LevelNumberLabel" type="Label" parent="Root/ContentCenter"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "LEVEL 1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="LevelNameLabel" type="Label" parent="Root/ContentCenter"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "The Cursed Forest"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="DescSpacer" type="Control" parent="Root/ContentCenter"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 10)
+
+[node name="DescriptionLabel" type="Label" parent="Root/ContentCenter"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "A once-peaceful woodland, now corrupted by dark rituals."
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="StorySpacer" type="Control" parent="Root/ContentCenter"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 30)
+
+[node name="StoryMargin" type="MarginContainer" parent="Root/ContentCenter"]
+layout_mode = 2
+theme_override_constants/margin_left = 40
+theme_override_constants/margin_right = 40
+
+[node name="StoryLabel" type="Label" parent="Root/ContentCenter/StoryMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+custom_minimum_size = Vector2(0, 200)
+
+[node name="BottomSpacer" type="Control" parent="Root/ContentCenter"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 40)
+
+[node name="ContinuePrompt" type="Label" parent="Root/ContentCenter"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "TAP TO CONTINUE"
+horizontal_alignment = 1
+vertical_alignment = 1

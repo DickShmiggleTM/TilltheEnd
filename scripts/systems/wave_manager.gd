@@ -2,19 +2,24 @@ class_name WaveManager
 extends Node3D
 ## Manages wave progression and enemy spawning for the roguelike FPS.
 ##
-## 12 normal waves with escalating enemy compositions, followed by a boss
-## wave (wave 13). Enemies spawn in batches at map-provided spawn points
-## away from the player. Stats scale per wave via GameManager multipliers.
+## Uses GameManager.total_waves for wave count (varies per level).
+## Enemy composition is driven by GameManager.get_level_enemy_types() and
+## GameManager.get_level_enemy_weights() for weighted random selection.
+## Boss spawning loads the boss script from boss_script_path.
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
-const TOTAL_NORMAL_WAVES := 12
-const BOSS_WAVE := 13
 const REST_PERIOD := 5.0           ## Seconds between waves
 const SPAWN_BATCH_DELAY := 0.3     ## Delay between individual enemy spawns
 const MIN_SPAWN_DISTANCE := 8.0    ## Minimum distance from player for spawn point selection
+
+# ---------------------------------------------------------------------------
+# Boss script (set by game_scene before waves start)
+# ---------------------------------------------------------------------------
+
+var boss_script_path: String = ""
 
 # ---------------------------------------------------------------------------
 # State
@@ -88,11 +93,14 @@ func _spawn_wave(wave_number: int) -> void:
 	_wave_active = true
 	GameManager.current_wave = wave_number
 
-	if wave_number >= BOSS_WAVE:
+	var total_normal_waves: int = GameManager.total_waves
+	var boss_wave: int = total_normal_waves + 1
+
+	if wave_number >= boss_wave:
 		_spawn_boss_wave()
 		return
 
-	# -- Get wave composition --------------------------------------------
+	# -- Get wave composition from level data ----------------------------
 	var composition := _get_wave_composition(wave_number)
 
 	# -- Build spawn queue -----------------------------------------------
@@ -125,20 +133,32 @@ func _spawn_wave(wave_number: int) -> void:
 func _spawn_boss_wave() -> void:
 	GameManager.is_boss_wave = true
 
+	var total_normal_waves: int = GameManager.total_waves
+	var boss_wave: int = total_normal_waves + 1
 	var pos := _pick_spawn_point()
-	var wave := BOSS_WAVE
 
-	var hp_mult := GameManager.get_wave_enemy_hp_mult(wave)
-	var dmg_mult := GameManager.get_wave_enemy_dmg_mult(wave)
-	var spd_mult := GameManager.get_wave_enemy_speed_mult(wave)
+	var hp_mult := GameManager.get_wave_enemy_hp_mult(boss_wave)
+	var dmg_mult := GameManager.get_wave_enemy_dmg_mult(boss_wave)
+	var spd_mult := GameManager.get_wave_enemy_speed_mult(boss_wave)
 
-	var boss := EnemyBoss.new()
-	boss.initialize(hp_mult, dmg_mult, spd_mult)
+	# Load boss from script path if available, otherwise fall back to EnemyBoss
+	var boss: Node3D = null
+	if boss_script_path != "" and ResourceLoader.exists(boss_script_path):
+		var boss_script = load(boss_script_path)
+		if boss_script:
+			boss = CharacterBody3D.new()
+			boss.set_script(boss_script)
+	if boss == null:
+		# Fallback to default EnemyBoss class
+		boss = EnemyBoss.new()
+
+	if boss.has_method("initialize"):
+		boss.initialize(hp_mult, dmg_mult, spd_mult)
 	add_child(boss)
 	boss.global_position = pos
 
 	GameManager.register_enemies(1)
-	EventBus.wave_started.emit(BOSS_WAVE)
+	EventBus.wave_started.emit(boss_wave)
 	EventBus.boss_wave_started.emit()
 
 # ---------------------------------------------------------------------------
@@ -171,7 +191,7 @@ func _spawn_enemy(type: String, position: Vector3, wave: int) -> void:
 	enemy.global_position = position
 
 # ---------------------------------------------------------------------------
-# Spawn point selection — prefer points far from player
+# Spawn point selection -- prefer points far from player
 # ---------------------------------------------------------------------------
 
 func _pick_spawn_point() -> Vector3:
@@ -191,7 +211,7 @@ func _pick_spawn_point() -> Vector3:
 			valid_points.append(point)
 
 	if valid_points.is_empty():
-		# All too close — pick the farthest available
+		# All too close -- pick the farthest available
 		var best_point := _spawn_points[0]
 		var best_dist := 0.0
 		for point in _spawn_points:
@@ -207,107 +227,52 @@ func _pick_spawn_point() -> Vector3:
 	return chosen + jitter
 
 # ---------------------------------------------------------------------------
-# Wave composition — defines what enemies appear per wave
+# Wave composition -- uses weighted random selection from level data
 # ---------------------------------------------------------------------------
 
 func _get_wave_composition(wave: int) -> Dictionary:
 	var base_count := GameManager.get_wave_enemy_count(wave)
-	var composition: Dictionary = {}
+	var enemy_types: Array = GameManager.get_level_enemy_types()
+	var enemy_weights: Dictionary = GameManager.get_level_enemy_weights()
 
-	match wave:
-		1:
-			composition = {
-				"melee": base_count,
-			}
-		2:
-			composition = {
-				"melee": int(base_count * 0.8),
-				"fast": int(base_count * 0.2),
-			}
-		3:
-			composition = {
-				"melee": int(base_count * 0.5),
-				"ranged": int(base_count * 0.3),
-				"tank": maxi(int(base_count * 0.1), 1),
-				"fast": int(base_count * 0.1),
-			}
-		4:
-			composition = {
-				"melee": int(base_count * 0.4),
-				"ranged": int(base_count * 0.25),
-				"tank": maxi(int(base_count * 0.1), 1),
-				"fast": int(base_count * 0.15),
-				"exploder": maxi(int(base_count * 0.1), 1),
-			}
-		5:
-			composition = {
-				"melee": int(base_count * 0.3),
-				"ranged": int(base_count * 0.2),
-				"tank": maxi(int(base_count * 0.15), 2),
-				"fast": int(base_count * 0.2),
-				"exploder": maxi(int(base_count * 0.15), 2),
-			}
-		6:
-			composition = {
-				"melee": int(base_count * 0.25),
-				"ranged": int(base_count * 0.2),
-				"tank": maxi(int(base_count * 0.15), 2),
-				"fast": int(base_count * 0.25),
-				"exploder": maxi(int(base_count * 0.15), 2),
-			}
-		7:
-			composition = {
-				"melee": int(base_count * 0.2),
-				"ranged": int(base_count * 0.2),
-				"tank": maxi(int(base_count * 0.2), 3),
-				"fast": int(base_count * 0.2),
-				"exploder": maxi(int(base_count * 0.2), 3),
-			}
-		8:
-			composition = {
-				"melee": int(base_count * 0.15),
-				"ranged": int(base_count * 0.2),
-				"tank": maxi(int(base_count * 0.2), 3),
-				"fast": int(base_count * 0.25),
-				"exploder": maxi(int(base_count * 0.2), 3),
-			}
-		9:
-			composition = {
-				"melee": int(base_count * 0.15),
-				"ranged": int(base_count * 0.15),
-				"tank": maxi(int(base_count * 0.15), 4),
-				"fast": int(base_count * 0.35),
-				"exploder": maxi(int(base_count * 0.2), 4),
-			}
-		10:
-			composition = {
-				"melee": int(base_count * 0.1),
-				"ranged": int(base_count * 0.15),
-				"tank": maxi(int(base_count * 0.2), 5),
-				"fast": int(base_count * 0.35),
-				"exploder": maxi(int(base_count * 0.2), 4),
-			}
-		11:
-			composition = {
-				"melee": int(base_count * 0.15),
-				"ranged": int(base_count * 0.2),
-				"tank": maxi(int(base_count * 0.2), 5),
-				"fast": int(base_count * 0.25),
-				"exploder": maxi(int(base_count * 0.2), 5),
-			}
-		12:
-			# Everything maxed out — overwhelming numbers
-			composition = {
-				"melee": int(base_count * 0.15),
-				"ranged": int(base_count * 0.2),
-				"tank": maxi(int(base_count * 0.2), 6),
-				"fast": int(base_count * 0.25),
-				"exploder": maxi(int(base_count * 0.2), 6),
-			}
-		_:
-			composition = {
-				"melee": base_count,
-			}
+	if enemy_types.is_empty() or enemy_weights.is_empty():
+		return { "melee": maxi(base_count, 1) }
+
+	# Calculate total weight for normalization
+	var total_weight: float = 0.0
+	for etype in enemy_types:
+		total_weight += enemy_weights.get(etype, 0.0)
+
+	if total_weight <= 0.0:
+		return { "melee": maxi(base_count, 1) }
+
+	# Distribute enemies according to weights
+	var composition: Dictionary = {}
+	var assigned: int = 0
+
+	for i in enemy_types.size():
+		var etype: String = enemy_types[i]
+		var weight: float = enemy_weights.get(etype, 0.0)
+		var ratio: float = weight / total_weight
+		var count: int = int(base_count * ratio)
+
+		# Ensure at least 1 of each type that has weight
+		if count <= 0 and weight > 0.0:
+			count = 1
+
+		composition[etype] = count
+		assigned += count
+
+	# If rounding left us short, add remainder to the highest-weight type
+	var remainder := base_count - assigned
+	if remainder > 0:
+		var best_type: String = enemy_types[0]
+		var best_weight: float = 0.0
+		for etype in enemy_types:
+			if enemy_weights.get(etype, 0.0) > best_weight:
+				best_weight = enemy_weights.get(etype, 0.0)
+				best_type = etype
+		composition[best_type] = composition.get(best_type, 0) + remainder
 
 	# Ensure at least 1 enemy total
 	var total := 0
@@ -325,7 +290,8 @@ func _get_wave_composition(wave: int) -> Dictionary:
 func _on_wave_completed(wave_number: int) -> void:
 	_wave_active = false
 
-	if wave_number >= TOTAL_NORMAL_WAVES:
+	var total_normal_waves: int = GameManager.total_waves
+	if wave_number >= total_normal_waves:
 		# All normal waves done - boss wave next
 		EventBus.all_waves_completed.emit()
 		return
@@ -336,5 +302,7 @@ func _on_wave_completed(wave_number: int) -> void:
 
 
 func start_boss_wave() -> void:
-	_current_wave = BOSS_WAVE
-	_spawn_wave(BOSS_WAVE)
+	var total_normal_waves: int = GameManager.total_waves
+	var boss_wave: int = total_normal_waves + 1
+	_current_wave = boss_wave
+	_spawn_wave(boss_wave)

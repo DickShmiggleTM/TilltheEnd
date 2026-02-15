@@ -1,24 +1,26 @@
 extends Node3D
-## Main game scene orchestrator. Instantiates and manages all gameplay systems:
-## map generation, player, UI layers, wave management, upgrades, weapons, and
-## abilities. Coordinates everything through EventBus signals.
+## Main game scene orchestrator. Manages multi-level roguelike campaign flow
+## with permadeath. Instantiates and manages all gameplay systems: dynamic map
+## generation per level, player, UI layers, wave management, upgrades, weapons,
+## and abilities. Coordinates everything through EventBus signals.
 
 # ---------------------------------------------------------------------------
-# Preloaded scene / script resources
+# Preloaded scene / script resources (player, weapons, abilities, systems)
 # ---------------------------------------------------------------------------
 
-const MapGeneratorScript := preload("res://scripts/map/map_generator.gd")
 const PlayerControllerScript := preload("res://scripts/player/player_controller.gd")
 const WeaponManagerScript := preload("res://scripts/weapons/weapon_manager.gd")
 const AbilityManagerScript := preload("res://scripts/abilities/ability_manager.gd")
 const WaveManagerScript := preload("res://scripts/systems/wave_manager.gd")
 const UpgradeGeneratorScript := preload("res://scripts/systems/upgrade_generator.gd")
 
+# UI scene paths (loaded dynamically)
 const HUD_SCENE_PATH := "res://scenes/ui/hud.tscn"
 const TOUCH_CONTROLS_SCENE_PATH := "res://scenes/ui/touch_controls.tscn"
 const LEVEL_UP_SCREEN_SCENE_PATH := "res://scenes/ui/level_up_screen.tscn"
 const GAME_OVER_SCREEN_SCENE_PATH := "res://scenes/ui/game_over_screen.tscn"
 const PAUSE_MENU_SCENE_PATH := "res://scenes/ui/pause_menu.tscn"
+const LEVEL_INTRO_SCREEN_SCENE_PATH := "res://scenes/ui/level_intro_screen.tscn"
 
 # ---------------------------------------------------------------------------
 # Node references (created at runtime)
@@ -37,6 +39,7 @@ var touch_controls: Control = null
 var level_up_screen: Control = null
 var game_over_screen: Control = null
 var pause_menu: Control = null
+var level_intro_screen = null  # CanvasLayer root
 
 # Container for dynamically spawned entities (enemies, pickups, projectiles)
 var entity_container: Node3D = null
@@ -45,6 +48,11 @@ var entity_container: Node3D = null
 var _countdown_timer: float = 0.0
 var _countdown_active: bool = false
 var _game_started: bool = false
+
+# Level transition state
+var _level_complete_pending: bool = false
+var _level_complete_timer: float = 0.0
+const LEVEL_COMPLETE_DELAY := 3.0
 
 # Map seed for reproducibility
 var map_seed: int = 0
@@ -71,9 +79,6 @@ func _ready() -> void:
 	# Connect EventBus signals
 	_connect_signals()
 
-	# Begin a new run through GameManager
-	GameManager.start_new_run()
-
 	# Generate the map
 	map_seed = randi()
 	map_generator.generate_map(map_seed)
@@ -82,14 +87,23 @@ func _ready() -> void:
 	var spawn_pos := map_generator.get_player_spawn()
 	player.global_position = spawn_pos
 
-	# Give the player a starting weapon (pistol)
-	_give_starting_weapon()
+	# Give the player a starting weapon only on level 1 with no weapons
+	if GameManager.current_level == 1 and GameManager.player_weapons.is_empty():
+		_give_starting_weapon()
 
-	# Start the countdown before waves begin
-	_start_countdown()
+	# Pass boss script path to wave manager
+	var boss_script: String = GameManager.current_level_data.get("boss_script", "")
+	if wave_manager:
+		wave_manager.boss_script_path = boss_script
+
+	# Show level intro screen before gameplay starts
+	_show_level_intro()
 
 
 func _process(delta: float) -> void:
+	# -- Level intro is handled by the intro screen; wait for it to finish --
+
+	# -- Countdown before waves begin --
 	if _countdown_active:
 		_countdown_timer -= delta
 		if _countdown_timer <= 0.0:
@@ -99,6 +113,13 @@ func _process(delta: float) -> void:
 			if wave_manager and wave_manager.has_method("start_waves"):
 				var spawn_pts := map_generator.get_enemy_spawn_points()
 				wave_manager.start_waves(spawn_pts, player)
+
+	# -- Level complete transition --
+	if _level_complete_pending:
+		_level_complete_timer -= delta
+		if _level_complete_timer <= 0.0:
+			_level_complete_pending = false
+			_transition_to_next_level()
 
 
 func _exit_tree() -> void:
@@ -110,9 +131,21 @@ func _exit_tree() -> void:
 # ---------------------------------------------------------------------------
 
 func _setup_map() -> void:
+	# Load map generator script dynamically from level data
+	var script_path: String = GameManager.current_level_data.get("map_script", "")
 	map_generator = Node3D.new()
-	map_generator.set_script(MapGeneratorScript)
 	map_generator.name = "MapGenerator"
+
+	if script_path != "" and ResourceLoader.exists(script_path):
+		var script = load(script_path)
+		if script:
+			map_generator.set_script(script)
+	else:
+		# Fallback to default map generator
+		var fallback_script := preload("res://scripts/map/map_generator.gd")
+		map_generator.set_script(fallback_script)
+		push_warning("GameScene: Map script '%s' not found, using default generator." % script_path)
+
 	add_child(map_generator)
 
 
@@ -126,13 +159,10 @@ func _setup_player() -> void:
 	# Add the player to the "player" group so enemies and abilities can find it
 	player.add_to_group("player")
 
-	# Create WeaponManager as a child of the player's camera
-	# (WeaponManager expects to be under the player and accesses camera via parent)
+	# Create WeaponManager as a child of the player
 	weapon_manager = Node3D.new()
 	weapon_manager.set_script(WeaponManagerScript)
 	weapon_manager.name = "WeaponManager"
-	# WeaponManager must be a child of the player so _ready() can get_parent()
-	# and position the weapon pivot relative to the camera
 	player.add_child(weapon_manager)
 
 	# Create AbilityManager as a child of the player
@@ -143,7 +173,7 @@ func _setup_player() -> void:
 
 
 func _setup_ui() -> void:
-	# HUD (CanvasLayer root — add directly to scene tree)
+	# HUD (CanvasLayer root -- add directly to scene tree)
 	var hud_node := _load_ui_node(HUD_SCENE_PATH, "HUD")
 	if hud_node:
 		add_child(hud_node)
@@ -155,7 +185,7 @@ func _setup_ui() -> void:
 		if tc_node.has_signal("pause_pressed"):
 			tc_node.pause_pressed.connect(_on_pause_pressed)
 
-	# Level-up screen (CanvasLayer root — handles its own visibility & pause)
+	# Level-up screen (CanvasLayer root -- handles its own visibility & pause)
 	var lu_node := _load_ui_node(LEVEL_UP_SCREEN_SCENE_PATH, "LevelUpScreen")
 	if lu_node:
 		add_child(lu_node)
@@ -169,6 +199,12 @@ func _setup_ui() -> void:
 	var pm_node := _load_ui_node(PAUSE_MENU_SCENE_PATH, "PauseMenu")
 	if pm_node:
 		add_child(pm_node)
+
+	# Level intro screen
+	var li_node := _load_ui_node(LEVEL_INTRO_SCREEN_SCENE_PATH, "LevelIntroScreen")
+	if li_node:
+		add_child(li_node)
+		level_intro_screen = li_node
 
 
 func _setup_wave_system() -> void:
@@ -218,6 +254,18 @@ func _give_starting_weapon() -> void:
 
 
 # ---------------------------------------------------------------------------
+# Level intro
+# ---------------------------------------------------------------------------
+
+func _show_level_intro() -> void:
+	# Pause the game during intro
+	get_tree().paused = true
+
+	# Emit level_started so the intro screen can display info
+	EventBus.level_started.emit(GameManager.current_level, GameManager.current_level_data)
+
+
+# ---------------------------------------------------------------------------
 # Countdown
 # ---------------------------------------------------------------------------
 
@@ -228,6 +276,30 @@ func _start_countdown() -> void:
 	# Notify HUD about countdown if it supports it
 	if hud and hud.has_method("show_countdown"):
 		hud.show_countdown(3.0)
+
+
+# ---------------------------------------------------------------------------
+# Level transition (after boss kill)
+# ---------------------------------------------------------------------------
+
+func _on_level_complete() -> void:
+	# Save progress for the NEXT level
+	SaveManager.save_progress(SaveManager.create_save_from_state())
+
+	# Show level complete message on HUD
+	if hud and hud.has_method("show_level_complete"):
+		hud.show_level_complete(GameManager.current_level)
+
+	EventBus.level_complete.emit(GameManager.current_level)
+
+	# Wait before transitioning
+	_level_complete_pending = true
+	_level_complete_timer = LEVEL_COMPLETE_DELAY
+
+
+func _transition_to_next_level() -> void:
+	get_tree().paused = false
+	get_tree().change_scene_to_file("res://scenes/game.tscn")
 
 
 # ---------------------------------------------------------------------------
@@ -245,6 +317,7 @@ func _connect_signals() -> void:
 	EventBus.game_paused.connect(_on_game_paused)
 	EventBus.game_resumed.connect(_on_game_resumed)
 	EventBus.upgrade_selected.connect(_on_upgrade_selected)
+	EventBus.level_intro_finished.connect(_on_level_intro_finished)
 
 
 func _disconnect_signals() -> void:
@@ -268,6 +341,17 @@ func _disconnect_signals() -> void:
 		EventBus.game_resumed.disconnect(_on_game_resumed)
 	if EventBus.upgrade_selected.is_connected(_on_upgrade_selected):
 		EventBus.upgrade_selected.disconnect(_on_upgrade_selected)
+	if EventBus.level_intro_finished.is_connected(_on_level_intro_finished):
+		EventBus.level_intro_finished.disconnect(_on_level_intro_finished)
+
+
+# ---------------------------------------------------------------------------
+# Level intro finished -- unpause and start countdown
+# ---------------------------------------------------------------------------
+
+func _on_level_intro_finished() -> void:
+	get_tree().paused = false
+	_start_countdown()
 
 
 # ---------------------------------------------------------------------------
@@ -289,6 +373,7 @@ func _on_upgrade_selected(_upgrade: Dictionary) -> void:
 # ---------------------------------------------------------------------------
 
 func _on_player_died() -> void:
+	# SaveManager already deletes the save via its own EventBus.player_died connection
 	# Give a brief delay before showing game over
 	await get_tree().create_timer(1.5).timeout
 	GameManager.game_over()
@@ -303,15 +388,25 @@ func _on_game_over(survived_waves: int, kills: int) -> void:
 
 
 # ---------------------------------------------------------------------------
-# Victory (boss kill)
+# Victory (final boss kill -- level 7 completed, GameManager set VICTORY)
 # ---------------------------------------------------------------------------
 
 func _on_boss_killed() -> void:
-	# GameManager._on_boss_killed() sets state to VICTORY and emits game_won
-	pass
+	# GameManager._on_boss_killed() calls advance_to_next_level() which either:
+	# - Sets state to LEVEL_COMPLETE (levels 1-6) and loads next level data
+	# - Sets state to VICTORY and emits game_won (level 7)
+	# We check state in _process or handle via signals
+	await get_tree().create_timer(0.1).timeout  # Allow GameManager to process first
+
+	if GameManager.state == GameManager.GameState.LEVEL_COMPLETE:
+		_on_level_complete()
+	# If VICTORY, _on_game_won will be called via EventBus.game_won
 
 
 func _on_game_won() -> void:
+	# Final victory -- level 7 boss defeated
+	# Delete save since the run is complete
+	SaveManager.delete_save()
 	get_tree().paused = true
 	if game_over_screen:
 		game_over_screen.visible = true
@@ -347,6 +442,11 @@ func _on_all_waves_completed() -> void:
 		hud.show_boss_warning()
 
 	await get_tree().create_timer(2.0).timeout
+
+	# Show boss intro
+	var boss_name: String = GameManager.current_level_data.get("boss_name", "BOSS")
+	var boss_intro: String = GameManager.current_level_data.get("boss_intro", "")
+	EventBus.boss_intro_started.emit(boss_name, boss_intro)
 
 	EventBus.boss_wave_started.emit()
 	if wave_manager and wave_manager.has_method("start_boss_wave"):

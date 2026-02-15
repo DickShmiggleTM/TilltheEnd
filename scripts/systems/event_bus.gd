@@ -46,3 +46,9 @@ signal game_won
 signal game_paused
 signal game_resumed
 signal run_started
+
+# Level / campaign events
+signal level_complete(level_number: int)
+signal level_started(level_number: int, level_data: Dictionary)
+signal level_intro_finished
+signal boss_intro_started(boss_name: String, boss_intro: String)

@@ -2,6 +2,10 @@ extends CanvasLayer
 ## Game over and victory screen.
 ## Displays final run stats and offers retry / main menu options.
 ## Works while paused (PROCESS_MODE_ALWAYS).
+##
+## On death: shows "SAVE DELETED" to make permadeath clear,
+## includes "Level Reached" in stats.
+## On final victory (level 7): shows "THE NAMELESS ONE IS DEFEATED".
 
 # ── Node references ──────────────────────────────────────────────────────────
 var overlay: ColorRect
@@ -11,6 +15,8 @@ var waves_label: Label
 var kills_label: Label
 var time_label: Label
 var level_label: Label
+var level_reached_label: Label
+var permadeath_label: Label
 var try_again_button: Button
 var main_menu_button: Button
 
@@ -29,6 +35,8 @@ func _ready() -> void:
 	kills_label = %KillsLabel
 	time_label = %TimeLabel
 	level_label = %LevelLabel
+	level_reached_label = %LevelReachedLabel
+	permadeath_label = %PermadeathLabel
 	try_again_button = %TryAgainButton
 	main_menu_button = %MainMenuButton
 
@@ -42,6 +50,7 @@ func _ready() -> void:
 
 	# Start hidden
 	visible = false
+	permadeath_label.visible = false
 
 
 func _on_game_over(survived_waves: int, kills: int) -> void:
@@ -58,11 +67,22 @@ func _show_screen(waves: int, kills: int) -> void:
 	get_tree().paused = true
 
 	if _is_victory:
-		title_label.text = "VICTORY"
+		# Check if this is the final boss (level 7)
+		if GameManager.current_level >= GameManager.TOTAL_LEVELS:
+			title_label.text = "THE NAMELESS ONE IS DEFEATED"
+		else:
+			title_label.text = "VICTORY"
 		title_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.1))
+		permadeath_label.visible = false
+		try_again_button.text = "NEW RUN"
 	else:
 		title_label.text = "GAME OVER"
 		title_label.add_theme_color_override("font_color", Color(0.9, 0.15, 0.1))
+		# Show permadeath warning
+		permadeath_label.visible = true
+		permadeath_label.text = "SAVE DELETED"
+		permadeath_label.add_theme_color_override("font_color", Color(0.9, 0.15, 0.1))
+		try_again_button.text = "TRY AGAIN"
 
 	# Populate stats
 	waves_label.text = "Waves Survived: %d / %d" % [waves, GameManager.total_waves]
@@ -70,7 +90,15 @@ func _show_screen(waves: int, kills: int) -> void:
 	var minutes := int(GameManager.run_time) / 60
 	var seconds := int(GameManager.run_time) % 60
 	time_label.text = "Time Survived: %02d:%02d" % [minutes, seconds]
-	level_label.text = "Level Reached: %d" % GameManager.player_level
+	level_label.text = "Player Level: %d" % GameManager.player_level
+
+	# Show which campaign level the player reached
+	var campaign_level: int = GameManager.current_level
+	var level_name: String = GameManager.current_level_data.get("name", "")
+	if level_name != "":
+		level_reached_label.text = "Level Reached: %d - %s" % [campaign_level, level_name]
+	else:
+		level_reached_label.text = "Level Reached: %d / %d" % [campaign_level, GameManager.TOTAL_LEVELS]
 
 	visible = true
 
@@ -88,6 +116,7 @@ func _show_screen(waves: int, kills: int) -> void:
 
 func _on_try_again() -> void:
 	get_tree().paused = false
+	GameManager.start_new_run()
 	get_tree().change_scene_to_file("res://scenes/game.tscn")
 
 

@@ -1,8 +1,9 @@
 extends CanvasLayer
 ## In-game HUD for Till The End.
-## Displays health, EXP, wave info, weapon status, boss health, crosshair,
-## kill counter, timer, and damage vignette. All elements use a dark
+## Displays health, EXP, wave info, level info, weapon status, boss health,
+## crosshair, kill counter, timer, and damage vignette. All elements use a dark
 ## semi-transparent theme with red/orange hellish colors.
+## Wave display now shows "LEVEL X - WAVE Y/Z" format.
 
 # ── Node references (assigned in _ready via find_child) ──────────────────────
 var health_bar: ProgressBar
@@ -20,6 +21,7 @@ var boss_name_label: Label
 var boss_container: VBoxContainer
 var crosshair: Control
 var damage_vignette: ColorRect
+var level_info_label: Label
 
 # ── State ────────────────────────────────────────────────────────────────────
 var _current_health: float = 100.0
@@ -37,6 +39,8 @@ var _boss_health: float = 100.0
 var _boss_max_health: float = 100.0
 var _weapon_count: int = 0
 var _active_weapon_index: int = 0
+var _campaign_level: int = 1
+var _campaign_level_name: String = ""
 
 
 func _ready() -> void:
@@ -57,15 +61,22 @@ func _ready() -> void:
 	boss_container = %BossContainer
 	crosshair = %Crosshair
 	damage_vignette = %DamageVignette
+	level_info_label = %LevelInfoLabel
 
 	# Initial state
 	boss_container.visible = false
 	damage_vignette.modulate.a = 0.0
+
+	# Set campaign level info from GameManager
+	_campaign_level = GameManager.current_level
+	_campaign_level_name = GameManager.current_level_data.get("name", "")
+
 	_update_health_display()
 	_update_exp_display()
 	_update_wave_display()
 	_update_kill_display()
 	_update_timer_display()
+	_update_level_info_display()
 
 	# Connect EventBus signals
 	EventBus.player_exp_gained.connect(_on_player_exp_gained)
@@ -80,6 +91,7 @@ func _ready() -> void:
 	EventBus.damage_dealt.connect(_on_damage_dealt)
 	EventBus.enemy_killed.connect(_on_enemy_killed)
 	EventBus.boss_killed.connect(_on_boss_killed)
+	EventBus.level_started.connect(_on_level_started)
 
 
 func _process(delta: float) -> void:
@@ -109,7 +121,7 @@ func _update_exp_display() -> void:
 
 
 func _update_wave_display() -> void:
-	wave_label.text = "WAVE %d/%d" % [_current_wave, GameManager.total_waves]
+	wave_label.text = "LEVEL %d - WAVE %d/%d" % [_campaign_level, _current_wave, GameManager.total_waves]
 	enemies_label.text = "%d REMAINING" % _enemies_remaining
 
 
@@ -121,6 +133,11 @@ func _update_timer_display() -> void:
 	var minutes := int(_run_time) / 60
 	var seconds := int(_run_time) % 60
 	timer_label.text = "%02d:%02d" % [minutes, seconds]
+
+
+func _update_level_info_display() -> void:
+	if level_info_label:
+		level_info_label.text = "%s" % _campaign_level_name
 
 
 func _update_weapon_slots() -> void:
@@ -209,7 +226,9 @@ func _on_weapon_acquired(_weapon_data: Dictionary) -> void:
 func _on_boss_wave_started() -> void:
 	_boss_active = true
 	boss_container.visible = true
-	boss_name_label.text = "BOSS"
+	# Show boss name from level data
+	var boss_name: String = GameManager.current_level_data.get("boss_name", "BOSS")
+	boss_name_label.text = boss_name
 	_update_boss_health(100.0, 100.0)
 
 
@@ -228,6 +247,13 @@ func _on_damage_dealt(amount: float, _position: Vector3, _is_crit: bool) -> void
 func _on_enemy_killed(_enemy: Node3D, _position: Vector3) -> void:
 	_kill_count = GameManager.total_kills
 	_update_kill_display()
+
+
+func _on_level_started(level_number: int, level_data: Dictionary) -> void:
+	_campaign_level = level_number
+	_campaign_level_name = level_data.get("name", "")
+	_update_wave_display()
+	_update_level_info_display()
 
 
 ## Called by weapon manager or touch controls when weapon is switched
