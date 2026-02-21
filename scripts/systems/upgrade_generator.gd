@@ -434,6 +434,104 @@ const ABILITY_DATABASE := {
 		"color": Color(0.4, 0.9, 0.1), "level": 1,
 		"upgrade_desc": "DoT damage +1, Duration +3s"
 	},
+
+	# ── Skills ────────────────────────────────────────────────────────
+	"skill_bombs": {
+		"id": "skill_bombs", "name": "Bombs", "type": "ability",
+		"rarity": Rarity.COMMON,
+		"description": "Throws small bombs that explode dealing medium damage in a small area. Recharges after 30 secs.",
+		"damage": 30.0, "radius": 2.5, "cooldown": 30.0,
+		"color": Color(0.9, 0.5, 0.1), "level": 1,
+		"upgrade_desc": "Damage +25%, Cooldown -2s"
+	},
+	"skill_teleport": {
+		"id": "skill_teleport", "name": "Teleport", "type": "ability",
+		"rarity": Rarity.RARE,
+		"description": "Teleports forward in the direction you are facing. Recharges after 45 secs.",
+		"range": 12.0, "cooldown": 45.0,
+		"color": Color(0.3, 0.5, 1.0), "level": 1,
+		"upgrade_desc": "Range +2m, Cooldown -3s"
+	},
+	"skill_psionic_pulse": {
+		"id": "skill_psionic_pulse", "name": "Psionic Pulse", "type": "ability",
+		"rarity": Rarity.RARE,
+		"description": "Blasts a force that knocks back all enemies in a 10-meter area. Recharges every 4 mins.",
+		"damage": 15.0, "radius": 10.0, "knockback": 20.0, "cooldown": 240.0,
+		"color": Color(0.6, 0.3, 1.0), "level": 1,
+		"upgrade_desc": "Radius +1m, Knockback +15%"
+	},
+	"skill_necromancy": {
+		"id": "skill_necromancy", "name": "Necromancy", "type": "ability",
+		"rarity": Rarity.MYTHIC,
+		"description": "Resurrects the last enemy killed to fight for you. Recharges after 100 kills.",
+		"kills_required": 100, "minion_duration": 30.0, "minion_damage": 10.0,
+		"color": Color(0.1, 0.7, 0.1), "level": 1,
+		"upgrade_desc": "Kills required -10, Minion damage +30%"
+	},
+	"skill_bitter_frost": {
+		"id": "skill_bitter_frost", "name": "Bitter Frost", "type": "ability",
+		"rarity": Rarity.COMMON,
+		"description": "Freezes all enemies within sight for 20 secs. Recharges after 2 mins.",
+		"freeze_duration": 20.0, "range": 20.0, "cooldown": 120.0,
+		"color": Color(0.5, 0.8, 1.0), "level": 1,
+		"upgrade_desc": "Freeze duration +3s, Range +2m"
+	},
+	"skill_flame_mortar": {
+		"id": "skill_flame_mortar", "name": "Flame Mortar", "type": "ability",
+		"rarity": Rarity.RARE,
+		"description": "Shoots an arching fireball that explodes on impact, igniting enemies with burn damage. Recharges after 5 mins.",
+		"damage": 50.0, "radius": 6.0, "burn_dps": 8.0, "cooldown": 300.0,
+		"color": Color(1.0, 0.3, 0.0), "level": 1,
+		"upgrade_desc": "Damage +25%, Burn DPS +20%"
+	},
+	"skill_lifting_winds": {
+		"id": "skill_lifting_winds", "name": "Lifting Winds", "type": "ability",
+		"rarity": Rarity.COMMON,
+		"description": "Performs an extra midair jump using a burst of wind. Recharges every 10 secs.",
+		"jump_force": 10.0, "cooldown": 10.0,
+		"color": Color(0.7, 0.9, 1.0), "level": 1,
+		"upgrade_desc": "Jump force +15%, Cooldown -0.5s"
+	},
+	"skill_earth_spikes": {
+		"id": "skill_earth_spikes", "name": "Earth Spikes", "type": "ability",
+		"rarity": Rarity.COMMON,
+		"description": "Spikes erupt from the ground damaging enemies in the area. Recharges after 20 secs.",
+		"damage": 25.0, "radius": 5.0, "cooldown": 20.0,
+		"color": Color(0.5, 0.35, 0.2), "level": 1,
+		"upgrade_desc": "Damage +25%, Radius +0.5m"
+	},
+	"skill_healing_focus": {
+		"id": "skill_healing_focus", "name": "Healing Focus", "type": "ability",
+		"rarity": Rarity.COMMON,
+		"description": "Regenerates health gradually for 15 secs while standing still. Recharges after 45 secs.",
+		"heal_per_sec": 4.0, "heal_duration": 15.0, "cooldown": 45.0,
+		"color": Color(0.2, 1.0, 0.4), "level": 1,
+		"upgrade_desc": "Heal/sec +1.5, Duration +2s"
+	},
+	"skill_revitalize": {
+		"id": "skill_revitalize", "name": "Revitalize", "type": "ability",
+		"rarity": Rarity.RARE,
+		"description": "Instantly heals a portion of your health when it drops low. Recharges after 3 mins.",
+		"heal_percent": 0.35, "cooldown": 180.0,
+		"color": Color(0.3, 1.0, 0.3), "level": 1,
+		"upgrade_desc": "Heal amount +5%, Cooldown -10s"
+	},
+	"skill_bouncing_star": {
+		"id": "skill_bouncing_star", "name": "Bouncing Star", "type": "ability",
+		"rarity": Rarity.RARE,
+		"description": "Throws a large bouncing Morningstar that damages enemies it contacts. Recharges after 2 mins.",
+		"damage": 35.0, "bounces": 5, "range": 10.0, "cooldown": 120.0,
+		"color": Color(0.8, 0.7, 0.3), "level": 1,
+		"upgrade_desc": "Bounces +1, Damage +20%"
+	},
+	"skill_electric_burst": {
+		"id": "skill_electric_burst", "name": "Electric Burst", "type": "ability",
+		"rarity": Rarity.COMMON,
+		"description": "Burst of lightning from player that chains between enemies. Recharges after 3 mins.",
+		"damage": 18.0, "chains": 6, "range": 8.0, "cooldown": 180.0,
+		"color": Color(0.4, 0.6, 1.0), "level": 1,
+		"upgrade_desc": "Chains +2, Damage +20%"
+	},
 }
 
 

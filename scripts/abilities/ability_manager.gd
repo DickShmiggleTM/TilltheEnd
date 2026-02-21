@@ -48,6 +48,19 @@ const ABILITY_SCRIPTS: Dictionary = {
 	"voidwalker":          "res://scripts/abilities/voidwalker.gd",
 	"clairvoyant":         "res://scripts/abilities/clairvoyant.gd",
 	"acid_dipped":         "res://scripts/abilities/acid_dipped.gd",
+	# ── Skills ──────────────────────────────────────────────────────────
+	"skill_bombs":         "res://scripts/abilities/skill_bombs.gd",
+	"skill_teleport":      "res://scripts/abilities/skill_teleport.gd",
+	"skill_psionic_pulse": "res://scripts/abilities/skill_psionic_pulse.gd",
+	"skill_necromancy":    "res://scripts/abilities/skill_necromancy.gd",
+	"skill_bitter_frost":  "res://scripts/abilities/skill_bitter_frost.gd",
+	"skill_flame_mortar":  "res://scripts/abilities/skill_flame_mortar.gd",
+	"skill_lifting_winds": "res://scripts/abilities/skill_lifting_winds.gd",
+	"skill_earth_spikes":  "res://scripts/abilities/skill_earth_spikes.gd",
+	"skill_healing_focus": "res://scripts/abilities/skill_healing_focus.gd",
+	"skill_revitalize":    "res://scripts/abilities/skill_revitalize.gd",
+	"skill_bouncing_star": "res://scripts/abilities/skill_bouncing_star.gd",
+	"skill_electric_burst":"res://scripts/abilities/skill_electric_burst.gd",
 }
 
 # Active ability nodes keyed by ability_id
