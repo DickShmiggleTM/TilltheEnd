@@ -94,9 +94,9 @@ class BSPNode:
 # ---------------------------------------------------------------------------
 
 var _grid: Array = []
-var _rooms: Array = []
-var _arena_rooms: Array = []
-var _antechambers: Array = []
+var _rooms: Array[Rect2i_BSP] = []
+var _arena_rooms: Array[Rect2i_BSP] = []
+var _antechambers: Array[Rect2i_BSP] = []
 var _throne_room_center: Vector2i = Vector2i.ZERO
 var _throne_room_radius: int = THRONE_RADIUS
 var _approach_rect: Rect2i_BSP = null
@@ -1277,7 +1277,7 @@ func _build_environment() -> void:
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.1, 0.0, 0.05)
 	env.ambient_light_energy = 0.3
-	env.tonemap_mode = Environment.TONE_MAP_FILMIC
+	env.tonemap_mode = RenderingServer.TONE_MAP_FILMIC
 	env.tonemap_exposure = 1.0
 	env.fog_enabled = true
 	env.fog_light_color = Color(0.05, 0.0, 0.02)

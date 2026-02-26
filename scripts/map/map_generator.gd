@@ -629,7 +629,7 @@ func _build_environment() -> void:
 	env.ambient_light_energy = 0.35
 
 	# Tonemap for that gritty look
-	env.tonemap_mode = Environment.TONE_MAP_FILMIC
+	env.tonemap_mode = RenderingServer.TONE_MAP_FILMIC
 	env.tonemap_exposure = 1.0
 
 	# Fog for atmosphere and draw distance
@@ -725,7 +725,7 @@ func _determine_spawn_points() -> void:
 	)
 
 	var spawn_room: Rect2i_BSP = non_arena_rooms[0]
-	var sc := spawn_room.center()
+	var sc: Vector2i = spawn_room.center()
 	_player_spawn = Vector3(
 		_grid_to_world_x(sc.x),
 		0.5,  # Slightly above floor

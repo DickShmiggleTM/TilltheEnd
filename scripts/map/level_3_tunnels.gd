@@ -346,10 +346,10 @@ func _carve_passage(from_x: int, from_y: int, to_x: int, to_y: int) -> void:
 
 func _get_unvisited_neighbors(mx: int, my: int) -> Array:
 	var neighbors: Array = []
-	var dirs := [Vector2i(0, -1), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(1, 0)]
+	var dirs: Array[Vector2i] = [Vector2i(0, -1), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(1, 0)]
 	for d in dirs:
-		var nx := mx + d.x
-		var ny := my + d.y
+		var nx: int = mx + d.x
+		var ny: int = my + d.y
 		if nx >= 0 and nx < _maze_w and ny >= 0 and ny < _maze_h:
 			if not _maze_visited[nx][ny]:
 				neighbors.append(Vector2i(nx, ny))
@@ -805,7 +805,7 @@ func _build_environment() -> void:
 	env.ambient_light_color = Color(0.08, 0.05, 0.12)
 	env.ambient_light_energy = 0.25
 
-	env.tonemap_mode = Environment.TONE_MAP_FILMIC
+	env.tonemap_mode = RenderingServer.TONE_MAP_FILMIC
 	env.tonemap_exposure = 1.0
 
 	env.fog_enabled = true

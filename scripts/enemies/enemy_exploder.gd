@@ -156,7 +156,7 @@ func _explode() -> void:
 
 			# Knockback player away from explosion
 			if player is CharacterBody3D:
-				var kb_dir := (player.global_position - global_position).normalized()
+				var kb_dir: Vector3 = (player.global_position - global_position).normalized()
 				player.velocity += kb_dir * 12.0
 
 	# Damage other enemies in radius
@@ -171,7 +171,7 @@ func _explode() -> void:
 			var falloff := 1.0 - (dist / EXPLOSION_RADIUS)
 			var final_damage := effective_damage * 0.5 * falloff  # Half damage to other enemies
 			if enemy.has_method("take_damage"):
-				var kb_dir := (enemy.global_position - global_position).normalized()
+				var kb_dir: Vector3 = (enemy.global_position - global_position).normalized()
 				enemy.take_damage(final_damage, kb_dir)
 
 	# Explosion visual effect

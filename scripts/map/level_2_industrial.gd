@@ -1006,7 +1006,7 @@ func _build_environment() -> void:
 	env.ambient_light_color = Color(0.2, 0.15, 0.1)
 	env.ambient_light_energy = 0.35
 
-	env.tonemap_mode = Environment.TONE_MAP_FILMIC
+	env.tonemap_mode = RenderingServer.TONE_MAP_FILMIC
 	env.tonemap_exposure = 1.0
 
 	env.fog_enabled = true
@@ -1086,7 +1086,7 @@ func _determine_spawn_points() -> void:
 	else:
 		spawn_room = _rooms[0]
 
-	var sc := spawn_room.center()
+	var sc: Vector2i = spawn_room.center()
 	_player_spawn = Vector3(
 		_grid_to_world_x(sc.x), 0.5, _grid_to_world_z(sc.y)
 	)

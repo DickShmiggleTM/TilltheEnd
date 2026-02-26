@@ -52,7 +52,7 @@ func _process(delta: float) -> void:
 			if moved < movement_threshold:
 				# Check if health is not full
 				var current_hp: float = GameManager.get_trait("max_health")
-				var needs_heal := GameManager.player_stats.get("current_health", current_hp) < current_hp
+				var needs_heal: bool = GameManager.player_stats.get("current_health", current_hp) < current_hp
 				if needs_heal:
 					_start_healing()
 					_cooldown_timer = cooldown
