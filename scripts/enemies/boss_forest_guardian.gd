@@ -537,8 +537,7 @@ func _spawn_death_ring(index: int) -> void:
 # Inner class: Thorn projectile
 # ---------------------------------------------------------------------------
 
-class _ThornProjectile:
-	extends Area3D
+class _ThornProjectile extends Area3D:
 
 	var direction: Vector3 = Vector3.FORWARD
 	var projectile_speed: float = 14.0

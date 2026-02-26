@@ -676,8 +676,7 @@ func _spawn_death_ring(index: int) -> void:
 # Inner class: Web projectile (slows player)
 # ---------------------------------------------------------------------------
 
-class _WebProjectile:
-	extends Area3D
+class _WebProjectile extends Area3D:
 
 	var direction: Vector3 = Vector3.FORWARD
 	var projectile_speed: float = 16.0
@@ -727,8 +726,7 @@ class _WebProjectile:
 # Inner class: Poison projectile
 # ---------------------------------------------------------------------------
 
-class _PoisonProjectile:
-	extends Area3D
+class _PoisonProjectile extends Area3D:
 
 	var direction: Vector3 = Vector3.FORWARD
 	var projectile_speed: float = 13.0
