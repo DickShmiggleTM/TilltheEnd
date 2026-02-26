@@ -658,8 +658,7 @@ func _spawn_death_ring(index: int) -> void:
 # Inner class: Homing dark orb
 # ---------------------------------------------------------------------------
 
-class _DarkOrb:
-	extends Area3D
+class _DarkOrb extends Area3D:
 
 	var target: Node3D = null
 	var direction: Vector3 = Vector3.FORWARD

@@ -930,8 +930,7 @@ func _spawn_death_ring(index: int) -> void:
 # Inner class: Void rift projectile (homing)
 # ---------------------------------------------------------------------------
 
-class _VoidRiftProjectile:
-	extends Area3D
+class _VoidRiftProjectile extends Area3D:
 
 	var target: Node3D = null
 	var direction: Vector3 = Vector3.FORWARD
@@ -983,8 +982,7 @@ class _VoidRiftProjectile:
 # Inner class: Void orb chaser (slower, stronger homing)
 # ---------------------------------------------------------------------------
 
-class _VoidOrbChaser:
-	extends Area3D
+class _VoidOrbChaser extends Area3D:
 
 	var target: Node3D = null
 	var direction: Vector3 = Vector3.FORWARD

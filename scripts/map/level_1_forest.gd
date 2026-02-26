@@ -806,7 +806,7 @@ func _build_house() -> void:
 		second_y * 0.5,
 		hz + hh - ramp_length * 0.5 - 1.0
 	)
-	ramp.rotation_degrees.x = -degrees_to_radians(second_y / ramp_length) * 57.2958
+	ramp.rotation.x = -atan2(second_y, ramp_length)
 	ramp.use_collision = true
 	ramp.collision_layer = ENVIRONMENT_LAYER
 	ramp.collision_mask = 0

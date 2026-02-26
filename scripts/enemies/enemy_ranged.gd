@@ -158,8 +158,7 @@ func _fire_projectile(target: Node3D) -> void:
 # Inner class: Enemy projectile
 # ---------------------------------------------------------------------------
 
-class _EnemyProjectile:
-	extends Area3D
+class _EnemyProjectile extends Area3D:
 
 	var direction: Vector3 = Vector3.FORWARD
 	var projectile_speed: float = 15.0

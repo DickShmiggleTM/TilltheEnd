@@ -570,8 +570,7 @@ func _spawn_death_ring(index: int) -> void:
 # Inner class: Slag bomb projectile (arcs and leaves fire pool)
 # ---------------------------------------------------------------------------
 
-class _SlagBombProjectile:
-	extends Area3D
+class _SlagBombProjectile extends Area3D:
 
 	var direction: Vector3 = Vector3.FORWARD
 	var projectile_speed: float = 10.0
@@ -635,7 +634,7 @@ class _SlagBombProjectile:
 		mat.emission_energy_multiplier = 2.0
 		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		pool.material = mat
-		var scene_root := Engine.get_main_loop().current_scene if Engine.get_main_loop() else null
+		var scene_root := get_tree().current_scene
 		if scene_root:
 			scene_root.add_child(pool)
 			# Pool fades out after 4 seconds
