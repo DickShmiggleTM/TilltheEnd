@@ -1,5 +1,5 @@
-extends Node3D
 class_name AbilityBase
+extends Node3D
 ## Base class for all player abilities. Provides common interface and
 ## level-scaling logic. Concrete abilities override activate/deactivate
 ## and implement their own _process / _physics_process behaviour.
@@ -104,10 +104,10 @@ func _get_enemies_in_range(origin: Vector3, radius: float) -> Array[Node3D]:
 # ── Damage helpers ────────────────────────────────────────────────────
 
 ## Apply damage to an enemy node. Enemies are expected to have a
-## `take_damage(amount: float, source: Node3D)` method.
+## `take_damage(amount: float, knockback_dir: Vector3)` method.
 func _deal_damage(enemy: Node3D, amount: float) -> void:
 	if is_instance_valid(enemy) and enemy.has_method("take_damage"):
-		enemy.take_damage(amount, player)
+		enemy.take_damage(amount)
 		EventBus.damage_dealt.emit(amount, enemy.global_position, false)
 
 

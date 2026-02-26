@@ -43,10 +43,7 @@ func _on_player_died() -> void:
 		times_used += 1
 		kill_requirement = base_kill_requirement * int(pow(2, times_used))
 
-		# Revive the player
-		if player and is_instance_valid(player):
-			if player.has_method("heal"):
-				player.heal(GameManager.get_trait("max_health"))
-			elif "current_health" in player:
-				player.current_health = GameManager.get_trait("max_health")
-			EventBus.player_revived.emit()
+		# Revive the player using the dedicated revive() method,
+		# which restores _alive, collision, processing, and health.
+		if player and is_instance_valid(player) and player.has_method("revive"):
+			player.revive()

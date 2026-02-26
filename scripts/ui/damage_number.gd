@@ -1,3 +1,4 @@
+class_name DamageNumber
 extends Node3D
 ## Floating damage number that appears in 3D world space.
 ## Floats upward and fades out over 0.8 seconds.
@@ -5,8 +6,6 @@ extends Node3D
 ## Usage:
 ##   DamageNumber.create_damage_number(parent, position, amount, is_crit)
 ##   DamageNumber.create_heal_number(parent, position, amount)
-
-class_name DamageNumber
 
 # ── Configuration ────────────────────────────────────────────────────────────
 const FLOAT_SPEED := 2.0

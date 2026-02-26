@@ -177,11 +177,13 @@ func _setup_ui() -> void:
 	var hud_node := _load_ui_node(HUD_SCENE_PATH, "HUD")
 	if hud_node:
 		add_child(hud_node)
+		hud = hud_node
 
 	# Touch controls
 	var tc_node := _load_ui_node(TOUCH_CONTROLS_SCENE_PATH, "TouchControls")
 	if tc_node:
 		add_child(tc_node)
+		touch_controls = tc_node
 		if tc_node.has_signal("pause_pressed"):
 			tc_node.pause_pressed.connect(_on_pause_pressed)
 
@@ -189,16 +191,19 @@ func _setup_ui() -> void:
 	var lu_node := _load_ui_node(LEVEL_UP_SCREEN_SCENE_PATH, "LevelUpScreen")
 	if lu_node:
 		add_child(lu_node)
+		level_up_screen = lu_node
 
 	# Game over screen
 	var go_node := _load_ui_node(GAME_OVER_SCREEN_SCENE_PATH, "GameOverScreen")
 	if go_node:
 		add_child(go_node)
+		game_over_screen = go_node
 
 	# Pause menu
 	var pm_node := _load_ui_node(PAUSE_MENU_SCENE_PATH, "PauseMenu")
 	if pm_node:
 		add_child(pm_node)
+		pause_menu = pm_node
 
 	# Level intro screen
 	var li_node := _load_ui_node(LEVEL_INTRO_SCREEN_SCENE_PATH, "LevelIntroScreen")
@@ -374,8 +379,12 @@ func _on_upgrade_selected(_upgrade: Dictionary) -> void:
 
 func _on_player_died() -> void:
 	# SaveManager already deletes the save via its own EventBus.player_died connection
-	# Give a brief delay before showing game over
+	# Give a brief delay before showing game over -- this also allows
+	# God's Tear (or other revive mechanics) time to trigger.
 	await get_tree().create_timer(1.5).timeout
+	# If the player was revived during the delay, skip game over
+	if player and is_instance_valid(player) and player.get("_alive"):
+		return
 	GameManager.game_over()
 
 
