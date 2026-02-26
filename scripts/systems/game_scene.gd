@@ -84,7 +84,7 @@ func _ready() -> void:
 	map_generator.generate_map(map_seed)
 
 	# Place the player at the map's spawn point
-	var spawn_pos := map_generator.get_player_spawn()
+	var spawn_pos: Vector3 = map_generator.get_player_spawn()
 	player.global_position = spawn_pos
 
 	# Give the player a starting weapon only on level 1 with no weapons
@@ -111,7 +111,7 @@ func _process(delta: float) -> void:
 			_game_started = true
 			# Start the wave system
 			if wave_manager and wave_manager.has_method("start_waves"):
-				var spawn_pts := map_generator.get_enemy_spawn_points()
+				var spawn_pts: Array[Vector3] = map_generator.get_enemy_spawn_points()
 				wave_manager.start_waves(spawn_pts, player)
 
 	# -- Level complete transition --

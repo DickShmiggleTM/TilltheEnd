@@ -235,7 +235,7 @@ func _face_health_bar_to_camera() -> void:
 		return
 	for bar in [_health_bar_bg, _health_bar_fill]:
 		if bar:
-			var dir := cam.global_position - bar.global_position
+			var dir: Vector3 = cam.global_position - bar.global_position
 			dir.y = 0.0
 			if dir.length() > 0.01:
 				bar.look_at(bar.global_position + dir, Vector3.UP)

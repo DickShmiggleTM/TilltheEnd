@@ -217,7 +217,7 @@ func _on_enemies_remaining_changed(count: int) -> void:
 
 
 func _on_weapon_acquired(_weapon_data: Dictionary) -> void:
-	var weapon := GameManager.player_weapons.back()
+	var weapon: Dictionary = GameManager.player_weapons.back()
 	if weapon:
 		weapon_name_label.text = weapon.get("name", "Unknown")
 	_update_weapon_slots()

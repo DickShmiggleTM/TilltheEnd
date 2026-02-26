@@ -200,7 +200,7 @@ func _on_enemy_killed(_enemy: Node3D, _position: Vector3) -> void:
 
 func _on_exp_collected(amount: float) -> void:
 	var level_exp_mult := get_level_exp_mult()
-	var modified_amount := amount * player_traits.get("exp_mult", 1.0) * level_exp_mult
+	var modified_amount: float = amount * player_traits.get("exp_mult", 1.0) * level_exp_mult
 	player_exp += modified_amount
 	EventBus.player_exp_gained.emit(modified_amount, player_exp, player_exp_to_next)
 	while player_exp >= player_exp_to_next:

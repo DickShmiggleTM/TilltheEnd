@@ -86,11 +86,11 @@ class BSPNode:
 # ---------------------------------------------------------------------------
 
 var _grid: Array = []
-var _rooms: Array = []
-var _arena_rooms: Array = []
-var _side_rooms: Array = []
-var _ritual_rooms: Array = []
-var _sacrifice_rooms: Array = []
+var _rooms: Array[Rect2i_BSP] = []
+var _arena_rooms: Array[Rect2i_BSP] = []
+var _side_rooms: Array[Rect2i_BSP] = []
+var _ritual_rooms: Array[Rect2i_BSP] = []
+var _sacrifice_rooms: Array[Rect2i_BSP] = []
 var _nave: Rect2i_BSP = null
 var _entrance_room: Rect2i_BSP = null
 var _player_spawn: Vector3 = Vector3.ZERO
@@ -1044,7 +1044,7 @@ func _build_environment() -> void:
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.25, 0.02, 0.02)
 	env.ambient_light_energy = 0.35
-	env.tonemap_mode = Environment.TONE_MAP_FILMIC
+	env.tonemap_mode = RenderingServer.TONE_MAP_FILMIC
 	env.tonemap_exposure = 1.0
 	env.fog_enabled = true
 	env.fog_light_color = Color(0.12, 0.01, 0.01)

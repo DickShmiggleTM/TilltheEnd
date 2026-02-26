@@ -8,7 +8,7 @@ extends RefCounted
 ## Each death erases progress — true roguelike permadeath.
 
 # ── Level theme enum ──────────────────────────────────────────────────────
-enum Theme {
+enum LevelTheme {
 	FOREST,          # Level 1 - wide forest, two-story house, ritual sites
 	INDUSTRIAL,      # Level 2 - industrial area, buildings, puzzles
 	TUNNELS,         # Level 3 - maze-like tunnel system
@@ -26,7 +26,7 @@ static var LEVELS: Array[Dictionary] = [
 	{
 		"level_number": 1,
 		"name": "The Cursed Forest",
-		"theme": Theme.FOREST,
+		"theme": LevelTheme.FOREST,
 		"description": "A once-peaceful woodland, now corrupted by dark rituals.",
 		"map_script": "res://scripts/map/level_1_forest.gd",
 		"boss_script": "res://scripts/enemies/boss_forest_guardian.gd",
@@ -59,7 +59,7 @@ static var LEVELS: Array[Dictionary] = [
 	{
 		"level_number": 2,
 		"name": "The Dead Works",
-		"theme": Theme.INDUSTRIAL,
+		"theme": LevelTheme.INDUSTRIAL,
 		"description": "An abandoned industrial complex repurposed as a cult stronghold.",
 		"map_script": "res://scripts/map/level_2_industrial.gd",
 		"boss_script": "res://scripts/enemies/boss_overseer.gd",
@@ -92,7 +92,7 @@ static var LEVELS: Array[Dictionary] = [
 	{
 		"level_number": 3,
 		"name": "The Deep Warrens",
-		"theme": Theme.TUNNELS,
+		"theme": LevelTheme.TUNNELS,
 		"description": "A sprawling labyrinth of tunnels beneath the earth, carved by the cult's faithful.",
 		"map_script": "res://scripts/map/level_3_tunnels.gd",
 		"boss_script": "res://scripts/enemies/boss_tunnel_horror.gd",
@@ -125,7 +125,7 @@ static var LEVELS: Array[Dictionary] = [
 	{
 		"level_number": 4,
 		"name": "The Outer Sanctum",
-		"theme": Theme.COURTYARD,
+		"theme": LevelTheme.COURTYARD,
 		"description": "The temple courtyard — adorned with symbols of the nameless God.",
 		"map_script": "res://scripts/map/level_4_courtyard.gd",
 		"boss_script": "res://scripts/enemies/boss_high_priest.gd",
@@ -158,7 +158,7 @@ static var LEVELS: Array[Dictionary] = [
 	{
 		"level_number": 5,
 		"name": "Hall of Echoes",
-		"theme": Theme.TEMPLE_FLOOR_1,
+		"theme": LevelTheme.TEMPLE_FLOOR_1,
 		"description": "The first floor of the God's temple — vast halls echoing with whispered prayers.",
 		"map_script": "res://scripts/map/level_5_temple_f1.gd",
 		"boss_script": "res://scripts/enemies/boss_temple_sentinel.gd",
@@ -191,7 +191,7 @@ static var LEVELS: Array[Dictionary] = [
 	{
 		"level_number": 6,
 		"name": "The Crimson Nave",
-		"theme": Theme.TEMPLE_FLOOR_2,
+		"theme": LevelTheme.TEMPLE_FLOOR_2,
 		"description": "The second floor — where the cult performs its most terrible rituals.",
 		"map_script": "res://scripts/map/level_6_temple_f2.gd",
 		"boss_script": "res://scripts/enemies/boss_dark_apostle.gd",
@@ -224,7 +224,7 @@ static var LEVELS: Array[Dictionary] = [
 	{
 		"level_number": 7,
 		"name": "Throne of the Nameless",
-		"theme": Theme.TEMPLE_FLOOR_3,
+		"theme": LevelTheme.TEMPLE_FLOOR_3,
 		"description": "The final floor. The God's throne room. The end of everything.",
 		"map_script": "res://scripts/map/level_7_temple_f3.gd",
 		"boss_script": "res://scripts/enemies/boss_ancient_god.gd",

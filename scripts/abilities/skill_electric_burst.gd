@@ -83,7 +83,7 @@ func _fire_burst(nearby_enemies: Array[Node3D]) -> void:
 
 	# If we haven't filled the chain, try chaining from the last hit to other enemies
 	if chain_targets.size() < chain_count and not chain_targets.is_empty():
-		var last_pos := chain_targets.back().global_position
+		var last_pos: Vector3 = chain_targets.back().global_position
 		for enemy in _get_enemies():
 			if chain_targets.size() >= chain_count:
 				break
