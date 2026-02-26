@@ -629,7 +629,7 @@ func _build_environment() -> void:
 	env.ambient_light_energy = 0.35
 
 	# Tonemap for that gritty look
-	env.tonemap_mode = RenderingServer.TONE_MAP_FILMIC
+	env.tonemap_mode = Environment.TONE_MAP_FILMIC
 	env.tonemap_exposure = 1.0
 
 	# Fog for atmosphere and draw distance
