@@ -908,7 +908,7 @@ func _build_environment() -> void:
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.15, 0.05, 0.15)
 	env.ambient_light_energy = 0.35
-	env.tonemap_mode = RenderingServer.TONE_MAP_FILMIC
+	env.tonemap_mode = Environment.TONE_MAP_FILMIC
 	env.tonemap_exposure = 1.0
 	env.fog_enabled = true
 	env.fog_light_color = Color(0.06, 0.02, 0.06)
