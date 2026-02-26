@@ -390,6 +390,26 @@ func _die() -> void:
 	set_process(false)
 
 
+## Restore the player from death (used by God's Tear and similar revive mechanics).
+func revive() -> void:
+	if _alive:
+		return
+	_alive = true
+	# Restore collision layers
+	collision_layer = 2   # Layer 2: Player
+	collision_mask = 1 | 4 | 16  # Layers 1 (Environment), 3 (Enemies), 5 (Pickups)
+	set_physics_process(true)
+	set_process(true)
+	# Heal to full
+	var max_hp: float = GameManager.get_trait("max_health")
+	current_health = max_hp
+	# Brief invincibility after revive
+	_invincible = true
+	_invincibility_timer = 2.0
+	EventBus.player_healed.emit(max_hp)
+	EventBus.player_revived.emit()
+
+
 func _on_health_collected(amount: float) -> void:
 	heal(amount)
 

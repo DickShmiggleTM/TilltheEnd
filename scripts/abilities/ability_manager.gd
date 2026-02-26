@@ -1,5 +1,5 @@
-extends Node3D
 class_name AbilityManager
+extends Node3D
 ## Manages all active abilities for the player.
 ## Attach as a child of the player node. Listens to EventBus for
 ## ability_acquired, ability_upgraded, and bomb_ammo_collected signals.
