@@ -2,6 +2,10 @@ class_name EnemyBase
 extends CharacterBody3D
 ## Base class for all enemies. Handles health, movement toward player, death,
 ## EXP/pickup drops, knockback, damage flash, and stat scaling per wave.
+##
+## Visual system: uses a SpriteBillboard child for DOOM-style 2D sprites that
+## rotate to show the correct directional frame based on camera angle.
+## Subclasses configure the sprite via _get_sprite_texture() and related virtuals.
 
 # ---------------------------------------------------------------------------
 # Stats (override in subclasses)
@@ -37,12 +41,15 @@ var _flash_timer: float = 0.0
 var _player: Node3D = null
 
 # ---------------------------------------------------------------------------
-# Visual references (created in _ready)
+# Visual references
 # ---------------------------------------------------------------------------
 
+## Legacy reference kept for compatibility with subclasses that animate it.
+## When using sprites this is null; subclasses should check before using.
 var _mesh: Node3D = null
-var _base_material: StandardMaterial3D = null
-var _flash_material: StandardMaterial3D = null
+
+## The DOOM-style billboard sprite (always created in _ready).
+var _sprite_billboard: SpriteBillboard = null
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -58,27 +65,58 @@ const BASE_GOLD_DROP_CHANCE := 0.15
 const BASE_GOLD_AMOUNT := 5
 
 # ---------------------------------------------------------------------------
-# Virtual helpers – override in subclasses
+# Virtual helpers – override in subclasses for sprite configuration
 # ---------------------------------------------------------------------------
 
-## Override to return the mesh color for this enemy type.
+## Override to supply a Texture2D loaded from the enemy's sprite sheet.
+## Return null to use the procedural colored-quad fallback.
+func _get_sprite_texture() -> Texture2D:
+	return null
+
+## Override to set how many directional rows the sprite sheet has (4 or 8).
+func _get_sprite_num_directions() -> int:
+	return 8
+
+## Override to set how many animation frames (columns) each direction row has.
+func _get_sprite_frames_per_dir() -> int:
+	return 1
+
+## Override to set the sprite centre height above the enemy origin.
+func _get_sprite_height() -> float:
+	return 0.9
+
+## Override to set the animation playback speed in frames per second.
+func _get_sprite_fps() -> float:
+	return 8.0
+
+## Override to control whether left-side directions mirror right-side rows.
+func _get_sprite_use_mirror() -> bool:
+	return true
+
+## Override to return the pixel_size passed to SpriteBillboard.
+## Larger values = bigger sprite in world space.
+func _get_sprite_pixel_size() -> float:
+	return 0.005
+
+## Override to return the tint/modulate color used as enemy color reference
+## (also used for the procedural fallback quad).
 func _get_enemy_color() -> Color:
 	return Color(1.0, 0.3, 0.3)
 
-## Override to create a specific mesh shape. Must return the CSG node.
-func _create_mesh() -> Node3D:
-	var box := CSGBox3D.new()
-	box.size = Vector3(0.8, 1.2, 0.8)
-	box.position = Vector3(0.0, 0.6, 0.0)
-	return box
+# ---------------------------------------------------------------------------
+# Legacy virtual helpers (kept so boss subclasses still compile)
+# ---------------------------------------------------------------------------
 
-## Override to supply a custom collision shape size. Returns a BoxShape3D.
+## Legacy mesh creation — no longer used for regular enemies.
+## Kept so boss subclasses that still build CSG geometry can override it.
+func _create_mesh() -> Node3D:
+	return null
+
 func _create_collision_shape() -> Shape3D:
 	var box := BoxShape3D.new()
 	box.size = Vector3(0.8, 1.2, 0.8)
 	return box
 
-## Override to supply the collision shape position offset.
 func _get_collision_offset() -> Vector3:
 	return Vector3(0.0, 0.6, 0.0)
 
@@ -93,8 +131,6 @@ func _ready() -> void:
 	# -- Collision layers/masks ------------------------------------------
 	collision_layer = 4    # Layer 3 (bit 2 = value 4) — Enemies
 	collision_mask = 1 | 2 | 8 | 32
-	# Mask bits: 1 = Environment (layer 1), 2 = Player (layer 2),
-	#            8 = Projectiles (layer 4), 32 = PlayerProjectiles (layer 6)
 
 	# -- Collision shape -------------------------------------------------
 	var col_shape := CollisionShape3D.new()
@@ -102,23 +138,29 @@ func _ready() -> void:
 	col_shape.position = _get_collision_offset()
 	add_child(col_shape)
 
-	# -- Visual mesh -----------------------------------------------------
-	_mesh = _create_mesh()
-	_base_material = StandardMaterial3D.new()
-	_base_material.albedo_color = _get_enemy_color()
-	_base_material.emission_enabled = true
-	_base_material.emission = _get_enemy_color() * 0.3
-	_base_material.emission_energy_multiplier = 0.5
-	if _mesh is CSGPrimitive3D:
-		(_mesh as CSGPrimitive3D).material = _base_material
-	add_child(_mesh)
+	# -- Sprite billboard -----------------------------------------------
+	_sprite_billboard = SpriteBillboard.new()
+	_sprite_billboard.pixel_size = _get_sprite_pixel_size()
 
-	# Pre-create white flash material
-	_flash_material = StandardMaterial3D.new()
-	_flash_material.albedo_color = Color.WHITE
-	_flash_material.emission_enabled = true
-	_flash_material.emission = Color.WHITE
-	_flash_material.emission_energy_multiplier = 2.0
+	var tex := _get_sprite_texture()
+	if tex != null:
+		_sprite_billboard.setup(
+			self,
+			tex,
+			_get_sprite_num_directions(),
+			_get_sprite_frames_per_dir(),
+			_get_sprite_height(),
+			_get_sprite_fps(),
+			_get_sprite_use_mirror())
+	else:
+		_sprite_billboard.setup_colored(self, _get_enemy_color(), _get_sprite_height())
+
+	add_child(_sprite_billboard)
+
+	# -- Legacy mesh (subclasses that override _create_mesh still work) --
+	_mesh = _create_mesh()
+	if _mesh != null:
+		add_child(_mesh)
 
 	# -- Apply scaled stats ----------------------------------------------
 	health = max_health * wave_hp_mult
@@ -129,13 +171,11 @@ func _ready() -> void:
 
 
 func _find_player() -> void:
-	# Defer to next frame so the tree is ready
 	await get_tree().process_frame
 	var players := get_tree().get_nodes_in_group("player")
 	if players.size() > 0:
 		_player = players[0] as Node3D
 	else:
-		# Fallback: search by class
 		var root := get_tree().current_scene
 		if root:
 			for child in root.get_children():
@@ -167,8 +207,9 @@ func take_damage(amount: float, knockback_dir: Vector3 = Vector3.ZERO) -> void:
 
 	# -- Damage flash ----------------------------------------------------
 	_flash_timer = FLASH_DURATION
-	if _mesh is CSGPrimitive3D:
-		(_mesh as CSGPrimitive3D).material = _flash_material
+	if _sprite_billboard:
+		_sprite_billboard.flash_white(FLASH_DURATION)
+		_sprite_billboard.trigger_hurt()
 
 	# -- Emit damage signal ----------------------------------------------
 	EventBus.enemy_damaged.emit(self, final_amount)
@@ -183,6 +224,9 @@ func die() -> void:
 	if not is_alive:
 		return
 	is_alive = false
+
+	if _sprite_billboard:
+		_sprite_billboard.trigger_death()
 
 	# -- Drop EXP --------------------------------------------------------
 	var exp_amount := base_exp_drop * wave_hp_mult
@@ -210,7 +254,6 @@ func die() -> void:
 
 func _drop_exp(amount: float) -> void:
 	EventBus.exp_dropped.emit(global_position, amount)
-	# Instantiate pickup via static helper
 	var parent := get_tree().current_scene
 	if parent and parent.has_method("get_pickup_container"):
 		parent = parent.get_pickup_container()
@@ -255,7 +298,7 @@ func _try_drop_gold() -> void:
 # ---------------------------------------------------------------------------
 
 func _on_death_effects() -> void:
-	pass  # Subclasses can override for particles, sounds, etc.
+	pass
 
 # ---------------------------------------------------------------------------
 # Physics
@@ -265,11 +308,8 @@ func _physics_process(delta: float) -> void:
 	if not is_alive:
 		return
 
-	# -- Flash timer -----------------------------------------------------
-	if _flash_timer > 0.0:
-		_flash_timer -= delta
-		if _flash_timer <= 0.0 and _mesh is CSGPrimitive3D:
-			(_mesh as CSGPrimitive3D).material = _base_material
+	# -- Flash timer (legacy — billboard handles its own flash) ----------
+	_flash_timer = maxf(_flash_timer - delta, 0.0)
 
 	# -- Gravity ---------------------------------------------------------
 	if not is_on_floor():
@@ -298,6 +338,11 @@ func _physics_process(delta: float) -> void:
 			var look_target := global_position + Vector3(to_player.x, 0, to_player.z)
 			look_at(look_target, Vector3.UP)
 
+		# -- Update sprite walk state ------------------------------------
+		if _sprite_billboard:
+			if dist > attack_range * 0.8:
+				_sprite_billboard.set_walking()
+
 	# Apply movement with slow_mult
 	var effective_speed := speed * wave_speed_mult * slow_mult
 	var horizontal := move_dir * effective_speed + Vector3(_knockback_velocity.x, 0, _knockback_velocity.z)
@@ -325,6 +370,8 @@ func _handle_attack(_delta: float) -> void:
 		if _player.has_method("take_damage"):
 			_player.take_damage(effective_damage, self)
 		_attack_timer = attack_cooldown
+		if _sprite_billboard:
+			_sprite_billboard.trigger_attack()
 
 # ---------------------------------------------------------------------------
 # Utility
