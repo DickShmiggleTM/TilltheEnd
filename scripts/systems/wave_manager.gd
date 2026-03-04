@@ -183,6 +183,12 @@ func _spawn_enemy(type: String, position: Vector3, wave: int) -> void:
 			enemy = EnemyFast.new()
 		"exploder":
 			enemy = EnemyExploder.new()
+		"flying":
+			enemy = EnemyFlying.new()
+		"splitter":
+			enemy = EnemySplitter.new()
+		"digger":
+			enemy = EnemyDigger.new()
 		_:
 			enemy = EnemyMelee.new()
 
