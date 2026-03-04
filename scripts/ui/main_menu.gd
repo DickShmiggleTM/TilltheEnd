@@ -62,7 +62,7 @@ func _on_confirm_new_run() -> void:
 
 func _start_new_run() -> void:
 	GameManager.start_new_run()
-	get_tree().change_scene_to_file("res://scenes/game.tscn")
+	get_tree().change_scene_to_file("res://scenes/hub_world.tscn")
 
 
 func _on_continue_pressed() -> void:
@@ -75,7 +75,7 @@ func _on_continue_pressed() -> void:
 	SaveManager.restore_state_from_save(save_data)
 	var level: int = save_data.get("current_level", 1)
 	GameManager.continue_run(level)
-	get_tree().change_scene_to_file("res://scenes/game.tscn")
+	get_tree().change_scene_to_file("res://scenes/hub_world.tscn")
 
 
 func _on_quit_pressed() -> void:

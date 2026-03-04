@@ -303,8 +303,9 @@ func _on_level_complete() -> void:
 
 
 func _transition_to_next_level() -> void:
+	## After completing a level, return to hub world — player selects next door.
 	get_tree().paused = false
-	get_tree().change_scene_to_file("res://scenes/game.tscn")
+	get_tree().change_scene_to_file("res://scenes/hub_world.tscn")
 
 
 # ---------------------------------------------------------------------------
@@ -491,8 +492,9 @@ func _on_game_resumed() -> void:
 # ---------------------------------------------------------------------------
 
 func _restart() -> void:
+	## After game over: return to hub world (doors reset by GameManager.game_over())
 	get_tree().paused = false
-	get_tree().reload_current_scene()
+	get_tree().change_scene_to_file("res://scenes/hub_world.tscn")
 
 
 func _return_to_menu() -> void:

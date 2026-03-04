@@ -71,6 +71,9 @@ var _move_input: Vector2 = Vector2.ZERO
 ## Regen accumulator
 var _regen_accumulator: float = 0.0
 
+## Keys picked up in walled levels (key_id integers)
+var carried_keys: Array = []
+
 # ---------------------------------------------------------------------------
 # Lifecycle
 # ---------------------------------------------------------------------------
@@ -428,6 +431,11 @@ func get_fire_position() -> Vector3:
 
 func is_alive() -> bool:
 	return _alive
+
+
+## Returns the player camera (used by hub scene for interaction raycasting).
+func get_camera() -> Camera3D:
+	return camera
 
 
 # ---------------------------------------------------------------------------

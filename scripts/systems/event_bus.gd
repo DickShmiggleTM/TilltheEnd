@@ -58,3 +58,10 @@ signal level_complete(level_number: int)
 signal level_started(level_number: int, level_data: Dictionary)
 signal level_intro_finished
 signal boss_intro_started(boss_name: String, boss_intro: String)
+
+# Hub world events
+signal hub_world_entered
+signal hub_door_unlocked(level_number: int)
+signal hub_all_doors_reset
+signal relic_purchased(relic_id: String, cost: int)
+signal hub_interaction_changed(target_name: String)  # empty string = no target

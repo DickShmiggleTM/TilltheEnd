@@ -78,11 +78,11 @@ func _show_screen(waves: int, kills: int) -> void:
 	else:
 		title_label.text = "GAME OVER"
 		title_label.add_theme_color_override("font_color", Color(0.9, 0.15, 0.1))
-		# Show permadeath warning
+		# Show permadeath warning — all doors locked except first
 		permadeath_label.visible = true
-		permadeath_label.text = "SAVE DELETED"
+		permadeath_label.text = "SAVE DELETED — All doors locked"
 		permadeath_label.add_theme_color_override("font_color", Color(0.9, 0.15, 0.1))
-		try_again_button.text = "TRY AGAIN"
+		try_again_button.text = "RETURN TO SANCTUARY"
 
 	# Populate stats
 	waves_label.text = "Waves Survived: %d / %d" % [waves, GameManager.total_waves]
@@ -116,8 +116,12 @@ func _show_screen(waves: int, kills: int) -> void:
 
 func _on_try_again() -> void:
 	get_tree().paused = false
-	GameManager.start_new_run()
-	get_tree().change_scene_to_file("res://scenes/game.tscn")
+	if _is_victory:
+		# Start a completely new run
+		GameManager.start_new_run()
+	# On death: GameManager.game_over() already reset hub doors.
+	# Go to hub world where player can replay from Level 1.
+	get_tree().change_scene_to_file("res://scenes/hub_world.tscn")
 
 
 func _on_main_menu() -> void:

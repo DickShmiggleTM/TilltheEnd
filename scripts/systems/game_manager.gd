@@ -3,7 +3,7 @@ extends Node
 ## and multi-level campaign progression with permadeath.
 
 # ── Game state ──────────────────────────────────────────────────────────
-enum GameState { MENU, PLAYING, PAUSED, LEVEL_UP, GAME_OVER, VICTORY, LEVEL_COMPLETE, TRANSITIONING }
+enum GameState { MENU, HUB, PLAYING, PAUSED, LEVEL_UP, GAME_OVER, VICTORY, LEVEL_COMPLETE, TRANSITIONING }
 var state: GameState = GameState.MENU
 
 # ── Campaign / level tracking ───────────────────────────────────────────
@@ -32,6 +32,14 @@ const EXP_GROWTH_RATE := 1.35
 const BASE_EXP_NEEDED := 100.0
 const TOTAL_LEVELS := 7
 
+# ── Hub world / progression tracking ────────────────────────────────────
+## Which level doors are unlocked (1-indexed). Level 1 is always unlocked.
+var unlocked_levels: Array[int] = [1]
+## Relics purchased from the hub shop: relic_id → purchased count
+var player_relics: Dictionary = {}
+## The level the player selected from hub to play next
+var hub_selected_level: int = 1
+
 # ── Per-wave difficulty scaling (within a level) ────────────────────────
 const ENEMY_HP_SCALE := 1.2
 const ENEMY_DMG_SCALE := 1.12
@@ -53,9 +61,9 @@ func _ready() -> void:
 # Run management
 # ══════════════════════════════════════════════════════════════════════════
 
-## Start a brand new run from level 1.
+## Start a brand new run from level 1, entering the hub world first.
 func start_new_run() -> void:
-	state = GameState.PLAYING
+	state = GameState.HUB
 	current_level = 1
 	current_wave = 0
 	total_kills = 0
@@ -69,32 +77,88 @@ func start_new_run() -> void:
 	MAX_ABILITIES = 6
 	player_weapons.clear()
 	player_abilities.clear()
+	player_relics.clear()
+	unlocked_levels = [1]
+	hub_selected_level = 1
 	_reset_traits()
-	_load_level_data(1)
 	EventBus.run_started.emit()
+
+
+## Enter a level from the hub world.
+func enter_level(level_num: int) -> void:
+	if not is_level_unlocked(level_num):
+		return
+	hub_selected_level = level_num
+	current_level = level_num
+	current_wave = 0
+	level_kills = 0
+	is_boss_wave = false
+	enemies_alive = 0
+	_load_level_data(level_num)
+	state = GameState.PLAYING
 	EventBus.game_started.emit()
 
 
-## Continue a run from a saved level (after loading save data).
+## Return to hub world (after level complete or death).
+func return_to_hub() -> void:
+	state = GameState.HUB
+	EventBus.hub_world_entered.emit()
+
+
+## Check if a level door is unlocked.
+func is_level_unlocked(level_num: int) -> bool:
+	return level_num in unlocked_levels
+
+
+## Unlock a level door (call after completing the previous level).
+func unlock_level(level_num: int) -> void:
+	if level_num > 0 and level_num <= TOTAL_LEVELS and level_num not in unlocked_levels:
+		unlocked_levels.append(level_num)
+		unlocked_levels.sort()
+		EventBus.hub_door_unlocked.emit(level_num)
+
+
+## Reset all doors to locked except level 1 (called on death).
+func reset_hub_doors() -> void:
+	unlocked_levels = [1]
+	EventBus.hub_all_doors_reset.emit()
+
+
+## Purchase a relic from the hub shop.
+func purchase_relic(relic_id: String, cost: int) -> bool:
+	if player_gold < cost:
+		return false
+	player_gold -= cost
+	player_relics[relic_id] = player_relics.get(relic_id, 0) + 1
+	EventBus.relic_purchased.emit(relic_id, cost)
+	return true
+
+
+## Continue a run from a saved state (enters hub world, not level directly).
 func continue_run(from_level: int) -> void:
-	state = GameState.PLAYING
+	state = GameState.HUB
 	current_level = from_level
 	current_wave = 0
 	level_kills = 0
 	is_boss_wave = false
+	hub_selected_level = from_level
 	_load_level_data(from_level)
 	EventBus.run_started.emit()
-	EventBus.game_started.emit()
+	EventBus.hub_world_entered.emit()
 
 
 ## Advance to the next level after beating the current boss.
+## Unlocks the next door and returns to hub world.
 func advance_to_next_level() -> void:
+	var completed_level := current_level
 	current_level += 1
 	if current_level > TOTAL_LEVELS:
 		# Game complete! Final victory!
 		state = GameState.VICTORY
 		EventBus.game_won.emit()
 		return
+	# Unlock the next level door
+	unlock_level(current_level)
 	current_wave = 0
 	level_kills = 0
 	is_boss_wave = false
@@ -291,4 +355,5 @@ func resume_game() -> void:
 
 func game_over() -> void:
 	state = GameState.GAME_OVER
+	reset_hub_doors()
 	EventBus.game_over.emit(current_wave, total_kills)

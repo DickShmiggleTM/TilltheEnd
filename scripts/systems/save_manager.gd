@@ -61,6 +61,9 @@ func create_save_from_state() -> Dictionary:
 		"player_weapons": GameManager.player_weapons.duplicate(true),
 		"player_abilities": GameManager.player_abilities.duplicate(true),
 		"player_traits": GameManager.player_traits.duplicate(true),
+		"player_relics": GameManager.player_relics.duplicate(true),
+		"unlocked_levels": GameManager.unlocked_levels.duplicate(),
+		"player_gold": GameManager.player_gold,
 		"total_kills": GameManager.total_kills,
 		"run_time": GameManager.run_time,
 	}
@@ -78,6 +81,14 @@ func restore_state_from_save(data: Dictionary) -> void:
 	GameManager.player_abilities = data.get("player_abilities", []).duplicate(true)
 	if data.has("player_traits"):
 		GameManager.player_traits = data.get("player_traits", {}).duplicate(true)
+	if data.has("player_relics"):
+		GameManager.player_relics = data.get("player_relics", {}).duplicate(true)
+	if data.has("unlocked_levels"):
+		var raw: Array = data.get("unlocked_levels", [1])
+		GameManager.unlocked_levels.clear()
+		for v in raw:
+			GameManager.unlocked_levels.append(int(v))
+	GameManager.player_gold = data.get("player_gold", 0)
 	GameManager.total_kills = data.get("total_kills", 0)
 	GameManager.run_time = data.get("run_time", 0.0)
 
